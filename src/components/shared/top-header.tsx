@@ -21,7 +21,7 @@ export interface TopHeaderProps {
         avatar: string;
     };
     subsystemSlug?: string;
-    breadcrumbs?: { title: string; href?: string }[];
+    breadcrumbs?: { title: string; href?: string; isLast?: boolean }[];
 }
 
 export function TopHeader({ user, subsystemSlug, breadcrumbs: customBreadcrumbs }: TopHeaderProps) {

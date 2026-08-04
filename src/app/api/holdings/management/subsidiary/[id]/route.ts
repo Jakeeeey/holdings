@@ -8,7 +8,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const subsidiary = await fetchSubsidiaryById(Number(resolvedParams.id));
     return NextResponse.json({ success: true, data: subsidiary });
   } catch (error: unknown) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }
 
@@ -37,6 +38,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const result = await deleteSubsidiary(Number(resolvedParams.id));
     return NextResponse.json(result);
   } catch (error: unknown) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

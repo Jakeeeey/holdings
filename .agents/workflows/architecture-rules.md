@@ -20,6 +20,9 @@ Every module must reside in `src/modules/[subsystem]/[module-name]/` and maintai
 └── [Module]Page.tsx     # Main entry point for the module
 ```
 
+> [!IMPORTANT]
+> **Layouts & Navigation:** Whenever you set up a new subsystem, you MUST ensure that its root `layout.tsx` file includes the `AppSidebar` component and the **Top Navigation Header** (`TopHeader` component with breadcrumbs and user profile). Never leave a module visually detached from the main app navigation.
+
 ## 2. The Data Flow Protocol
 
 - **One-Way Flow**: View (Component) -> State (Hook) -> Backend (API) -> Domain Logic (Service).

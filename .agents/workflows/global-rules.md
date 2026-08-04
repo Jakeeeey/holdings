@@ -11,6 +11,7 @@ This document serves as the "Source of Truth" for development across the entire 
 - **DRY (Don't Repeat Yourself)**: If an utility or UI component is used in more than two modules, it must move to the global `/lib` or `/components/ui/` directories.
 - **Separation of Concerns**: Keep UI files clean. One file = one responsibility.
 - **Performance First**: Optimistic updates are preferred for standard actions, while high-risk actions must show a distinct loading state.
+- **Isolate Module Changes (DO NOT TOUCH GLOBALS)**: When creating or modifying a specific module, **you are strictly forbidden from modifying any global files** (e.g., shared components in `src/components/shared`, global layouts, or `.env` files) unless explicitly asked by the user. Keep changes strictly scoped to the `src/modules/[module]` or subsystem directories.
 
 ## 2. Directory Governance
 

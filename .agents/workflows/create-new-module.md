@@ -45,6 +45,11 @@ When the user asks to "Create a new module" for a specific domain (e.g., Invento
 - Use `@/app/(financial-management)/path_name/_components/ErrorPage` for errors.
 - Ensure all formatting (Currency, Date) uses `@/lib/utils`.
 
+### Step 6: Layout & Navigation (`layout.tsx`)
+
+- Ensure the module or its parent subsystem has a `layout.tsx` that includes both the `AppSidebar` and the **Top Navigation Header** (`TopHeader` component) wrapping the `{children}` inside the `SidebarInset`.
+- Instruct the user on how to update their backend/database to display the new module in the sidebar.
+
 ## 3. Completion Checklist
 
 - [ ] No relative imports (use `@/`).

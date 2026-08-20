@@ -77,7 +77,7 @@ export function EditTaskDialog({ open, onOpenChange, task, onUpdate, onDelete }:
           if (!res.ok) throw new Error("Failed to fetch users");
           const data = await res.json();
           setUsers(data.users || []);
-        } catch (error) {
+        } catch {
           toast.error("Could not load users list");
         } finally {
           setIsFetchingUsers(false);
@@ -118,7 +118,7 @@ export function EditTaskDialog({ open, onOpenChange, task, onUpdate, onDelete }:
       
       toast.success("Task successfully updated!");
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       toast.error("Failed to update task.");
     } finally {
       setIsSubmitting(false);
@@ -132,7 +132,7 @@ export function EditTaskDialog({ open, onOpenChange, task, onUpdate, onDelete }:
       await onDelete(task.id);
       toast.success("Task deleted successfully");
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete task");
     } finally {
       setIsDeleting(false);

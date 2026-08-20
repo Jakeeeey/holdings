@@ -58,7 +58,7 @@ export function CreateTaskDialog({ open, onOpenChange, userId, onSubmit }: Creat
           if (!res.ok) throw new Error("Failed to fetch users");
           const data = await res.json();
           setUsers(data.users || []);
-        } catch (error) {
+        } catch {
           toast.error("Could not load users list");
         } finally {
           setIsFetchingUsers(false);
@@ -110,7 +110,7 @@ export function CreateTaskDialog({ open, onOpenChange, userId, onSubmit }: Creat
         end_date: "",
       });
       setSelectedUsers([]);
-    } catch (error) {
+    } catch {
       toast.error("Failed to assign tasks.");
     } finally {
       setIsSubmitting(false);

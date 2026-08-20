@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -40,7 +41,7 @@ export function TaskBoard({ userId }: { userId: string | number }) {
   const [calendarView, setCalendarView] = useState<"month" | "week" | "day">("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [draggedTaskId, setDraggedTaskId] = useState<string | number | null>(null);
-  const [users, setUsers] = useState<unknown[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [showEmployeeFilter, setShowEmployeeFilter] = useState(false);
 
   useEffect(() => {
@@ -291,8 +292,8 @@ export function TaskBoard({ userId }: { userId: string | number }) {
                   <span className="truncate flex-1">{task.title}</span>
                   {task.assignees && task.assignees.length > 0 && (
                     <div className="flex gap-1 ml-2 shrink-0 overflow-hidden">
-                      {task.assignees.map((id: unknown) => {
-                         const user = users.find((u: unknown) => u.user_id?.toString() === id?.toString());
+                      {task.assignees.map((id: any) => {
+                         const user = users.find((u: any) => u.user_id?.toString() === id?.toString());
                          const name = user ? `${user.user_fname} ${user.user_lname}` : 'Unknown';
                          return (
                            <span key={id} className="inline-block px-1 rounded bg-white/20 text-[9px] text-white truncate max-w-[70px]">
@@ -336,8 +337,8 @@ export function TaskBoard({ userId }: { userId: string | number }) {
     const dayStart = startOfDay(currentDate);
     const dayEnd = endOfDay(currentDate);
 
-    const allDayTasks: unknown[] = [];
-    const timedTasks: unknown[] = [];
+    const allDayTasks: any[] = [];
+    const timedTasks: any[] = [];
 
     tasks.forEach(t => {
       const tStart = t.start_date ? parseISO(t.start_date) : 
@@ -367,7 +368,7 @@ export function TaskBoard({ userId }: { userId: string | number }) {
       return a.tStart.getTime() - b.tStart.getTime();
     });
 
-    const columns: unknown[][] = [];
+    const columns: any[][] = [];
     timedTasks.forEach(item => {
       let placed = false;
       for (const col of columns) {
@@ -423,8 +424,8 @@ export function TaskBoard({ userId }: { userId: string | number }) {
                     <span className="truncate flex-1">{task.title}</span>
                     {task.assignees && task.assignees.length > 0 && (
                       <div className="flex gap-1 ml-2 shrink-0 overflow-hidden">
-                        {task.assignees.map((id: unknown) => {
-                           const user = users.find((u: unknown) => u.user_id?.toString() === id?.toString());
+                        {task.assignees.map((id: any) => {
+                           const user = users.find((u: any) => u.user_id?.toString() === id?.toString());
                            const name = user ? `${user.user_fname} ${user.user_lname}` : 'Unknown';
                            return (
                              <span key={id} className="inline-block px-1 rounded bg-white/20 text-[9px] text-white truncate max-w-[70px]">
@@ -480,7 +481,7 @@ export function TaskBoard({ userId }: { userId: string | number }) {
                    else if (task.priority === "High") colorClass = "bg-orange-500 border-orange-600";
                 }
 
-                const customStyle: unknown = {
+                const customStyle: any = {
                   top: `${top}px`,
                   height: `${height}px`,
                   left: `calc(${colIndex} * (100% / ${numColumns}) + 4px)`,
@@ -506,8 +507,8 @@ export function TaskBoard({ userId }: { userId: string | number }) {
                     </div>
                     {task.assignees && task.assignees.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {task.assignees.map((id: unknown) => {
-                           const user = users.find((u: unknown) => u.user_id?.toString() === id?.toString());
+                        {task.assignees.map((id: any) => {
+                           const user = users.find((u: any) => u.user_id?.toString() === id?.toString());
                            const name = user ? `${user.user_fname} ${user.user_lname}` : 'Unknown';
                            return (
                              <span key={id} className="inline-block px-1 rounded bg-white/20 text-[8px] text-white truncate max-w-[70px]">
@@ -610,8 +611,8 @@ export function TaskBoard({ userId }: { userId: string | number }) {
                     
                     {task.assignees && task.assignees.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2" onClick={(e) => e.stopPropagation()}>
-                        {task.assignees.map((id: unknown) => {
-                           const user = users.find((u: unknown) => u.user_id?.toString() === id?.toString());
+                        {task.assignees.map((id: any) => {
+                           const user = users.find((u: any) => u.user_id?.toString() === id?.toString());
                            const name = user ? `${user.user_fname} ${user.user_lname}` : 'Unknown';
                            return (
                              <span key={id} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/5">
@@ -724,8 +725,8 @@ export function TaskBoard({ userId }: { userId: string | number }) {
                   <td className="px-6 py-4">
                     {task.assignees && task.assignees.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {task.assignees.map((id: unknown) => {
-                           const user = users.find((u: unknown) => u.user_id?.toString() === id?.toString());
+                        {task.assignees.map((id: any) => {
+                           const user = users.find((u: any) => u.user_id?.toString() === id?.toString());
                            const name = user ? `${user.user_fname} ${user.user_lname}` : 'Unknown';
                            return (
                              <span key={id} className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/5">
@@ -924,3 +925,4 @@ export function TaskBoard({ userId }: { userId: string | number }) {
     </div>
   );
 }
+

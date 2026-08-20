@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Task, CreateTask, UpdateTask, RecurringRule, CreateRecurringRule } from "../type";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -40,7 +41,7 @@ export const taskService = {
         const userIdsStr = userIds.join(',');
         // 1. Fetch assigned tasks from junction table
         const assigneesRes = await directusFetch(`/items/employee_task_assignee?filter[user_id][_in]=${userIdsStr}`);
-        const assignedTaskIds = assigneesRes.data?.map((a: unknown) => a.task_id) || [];
+        const assignedTaskIds = assigneesRes.data?.map((a: any) => a.task_id) || [];
         
         // 2. Fetch tasks where user is the direct owner OR they are assigned
         filterQuery = `?filter[_or][0][user_id][_in]=${userIdsStr}`;
@@ -56,12 +57,12 @@ export const taskService = {
       if (tasks.length === 0) return [];
 
       // 3. Fetch assignee counts/list for these tasks to populate `assignees` array
-      const taskIds = tasks.map((t: unknown) => t.id);
+      const taskIds = tasks.map((t: any) => t.id);
       const allAssigneesRes = await directusFetch(`/items/employee_task_assignee?filter[task_id][_in]=${taskIds.join(',')}`);
       const allAssignees = allAssigneesRes.data || [];
       
-      return tasks.map((task: unknown) => {
-        const taskAssignees = allAssignees.filter((a: unknown) => a.task_id === task.id).map((a: unknown) => a.user_id);
+      return tasks.map((task: any) => {
+        const taskAssignees = allAssignees.filter((a: any) => a.task_id === task.id).map((a: any) => a.user_id);
         return {
           ...task,
           assignees: taskAssignees,
@@ -152,3 +153,4 @@ export const schedulingService = {
     return res.data;
   }
 };
+

@@ -163,19 +163,6 @@ export async function getSidebarNavigation(subsystemSlug: string): Promise<NavIt
                 }));
         };
 
-        // Manually inject Dashboard Management
-        roots.push({
-            moduleId: 9999,
-            parentModuleId: null,
-            title: "Dashboard Management",
-            url: "/holdings/dashboard-management",
-            slug: "dashboard-management",
-            status: "active",
-            iconName: "LayoutDashboard",
-            sort: 9999,
-            items: []
-        } as TempNavItem);
-
         return sortTree(roots);
     } catch (err) {
         console.error("[Sidebar] Fatal Error:", err);

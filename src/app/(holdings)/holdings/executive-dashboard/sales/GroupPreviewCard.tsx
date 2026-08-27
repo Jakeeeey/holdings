@@ -7,7 +7,7 @@ import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+
 
 import { fetchExecutiveHealthData, fetchCompanyTargets } from "@/modules/holdings/executive-dashboard/executive-health/providers/fetchProvider";
 
@@ -62,7 +62,8 @@ export function GroupPreviewCard({ group }: { group: { id: number; group_name: s
     const isAchieved = achievement >= 100;
 
     return (
-        <Card className="relative overflow-hidden border-border/40 bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-full min-h-[220px] group">
+        <Link href={`/holdings/executive-dashboard/sales/${group.id}/executive-health`} className="block h-full cursor-pointer">
+            <Card className="relative overflow-hidden border-border/40 bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-full min-h-[220px] group">
             {/* Decorative background icon */}
                 <div className="absolute -right-6 -top-6 opacity-[0.02] group-hover:opacity-[0.08] transition-opacity">
                     <Trophy className="h-40 w-40 rotate-12" />
@@ -138,21 +139,11 @@ export function GroupPreviewCard({ group }: { group: { id: number; group_name: s
                                 </div>
                             </div>
                             
-                            <div className="flex gap-2 pt-4 border-t border-border/20 mt-4">
-                                <Link href={`/holdings/executive-dashboard/sales/${group.id}/executive-health`} className="flex-1">
-                                    <Button className="w-full text-[10px] font-black uppercase tracking-widest h-8 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20" variant="outline">
-                                        Health
-                                    </Button>
-                                </Link>
-                                <Link href={`/holdings/executive-dashboard/sales/${group.id}/managerial-supplier`} className="flex-1">
-                                    <Button className="w-full text-[10px] font-black uppercase tracking-widest h-8 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20" variant="outline">
-                                        Supplier
-                                    </Button>
-                                </Link>
-                            </div>
+
                         </div>
                     )}
                 </CardContent>
             </Card>
+        </Link>
     );
 }

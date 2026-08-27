@@ -1,12 +1,7 @@
 import React from "react";
 
 import { ChevronRight, LayoutDashboard, Truck, Activity, Briefcase } from "lucide-react";
-import { 
-    Breadcrumb,
-    BreadcrumbItem,
-    BreadcrumbList,
-    BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GroupPreviewCard } from "./sales/GroupPreviewCard";
@@ -34,15 +29,7 @@ export default async function ExecutiveDashboardRootPage() {
 
     return (
         <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-hidden bg-background">
-            <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:h-16 px-4">
-                <Breadcrumb>
-                    <BreadcrumbList>
-                        <BreadcrumbItem>
-                            <BreadcrumbPage>Executive Dashboard Overview</BreadcrumbPage>
-                        </BreadcrumbItem>
-                    </BreadcrumbList>
-                </Breadcrumb>
-            </header>
+
 
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-6 md:p-10 text-foreground">
                 <div className="max-w-7xl mx-auto space-y-10">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ExecutiveDashboardResponse } from "@/types/executive-dashboard.schema";
+import { ExecutiveDashboardResponse } from "@/modules/holdings/executive-dashboard/types/executive-dashboard.schema";
 
 export function useExecutiveDashboard() {
   const [data, setData] = useState<ExecutiveDashboardResponse | null>(null);

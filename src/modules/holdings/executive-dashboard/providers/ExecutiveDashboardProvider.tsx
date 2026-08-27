@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, ReactNode } from "react";
-import { useExecutiveDashboard } from "@/hooks/useExecutiveDashboard";
+import { useExecutiveDashboard } from "@/modules/holdings/executive-dashboard/hooks/useExecutiveDashboard";
 
 type DashboardContextType = ReturnType<typeof useExecutiveDashboard>;
 

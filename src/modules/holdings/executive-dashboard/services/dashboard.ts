@@ -1,4 +1,4 @@
-import { ExecutiveDashboardResponse } from "@/types/executive-dashboard.schema";
+import { ExecutiveDashboardResponse } from "@/modules/holdings/executive-dashboard/types/executive-dashboard.schema";
 
 export const DashboardService = {
   fetchDashboardData: async (): Promise<ExecutiveDashboardResponse> => {

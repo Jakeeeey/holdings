@@ -10,7 +10,7 @@ export function useExecutiveDashboard() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/executive-dashboard");
+      const res = await fetch("/api/holdings/executive-dashboard");
       if (!res.ok) {
         throw new Error("Failed to fetch dashboard data");
       }

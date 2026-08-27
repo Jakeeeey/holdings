@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { LayoutDashboard, Trophy } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
-import { fetchExecutiveHealthData, fetchCompanyTargets } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/executive-health/providers/fetchProvider";
+import { fetchExecutiveHealthData, fetchCompanyTargets } from "@/modules/holdings/executive-dashboard/executive-health/providers/fetchProvider";
 
 const formatShort = (val: number) => {
     const absVal = Math.abs(val);
@@ -18,7 +19,7 @@ const formatShort = (val: number) => {
     return `${sign}₱${absVal.toFixed(0)}`;
 };
 
-export function GroupPreviewCard({ group }: { group: any }) {
+export function GroupPreviewCard({ group }: { group: { id: number; group_name: string; [key: string]: unknown } }) {
     const [loading, setLoading] = useState(true);
     const [sales, setSales] = useState(0);
     const [target, setTarget] = useState(0);
@@ -61,9 +62,8 @@ export function GroupPreviewCard({ group }: { group: any }) {
     const isAchieved = achievement >= 100;
 
     return (
-        <Link href={`/holdings/executive-dashboard/sales/${group.id}/executive-health`} className="block group">
-            <Card className="relative overflow-hidden border-border/40 bg-card group-hover:border-primary/50 group-hover:shadow-2xl transition-all duration-300 flex flex-col h-full min-h-[220px]">
-                {/* Decorative background icon */}
+        <Card className="relative overflow-hidden border-border/40 bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-full min-h-[220px] group">
+            {/* Decorative background icon */}
                 <div className="absolute -right-6 -top-6 opacity-[0.02] group-hover:opacity-[0.08] transition-opacity">
                     <Trophy className="h-40 w-40 rotate-12" />
                 </div>
@@ -137,10 +137,22 @@ export function GroupPreviewCard({ group }: { group: any }) {
                                     </div>
                                 </div>
                             </div>
+                            
+                            <div className="flex gap-2 pt-4 border-t border-border/20 mt-4">
+                                <Link href={`/holdings/executive-dashboard/sales/${group.id}/executive-health`} className="flex-1">
+                                    <Button className="w-full text-[10px] font-black uppercase tracking-widest h-8 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20" variant="outline">
+                                        Health
+                                    </Button>
+                                </Link>
+                                <Link href={`/holdings/executive-dashboard/sales/${group.id}/managerial-supplier`} className="flex-1">
+                                    <Button className="w-full text-[10px] font-black uppercase tracking-widest h-8 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20" variant="outline">
+                                        Supplier
+                                    </Button>
+                                </Link>
+                            </div>
                         </div>
                     )}
                 </CardContent>
             </Card>
-        </Link>
     );
 }

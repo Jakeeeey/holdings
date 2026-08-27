@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 async function getGroupConfig(groupId: string) {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     try {
-        const res = await fetch(`${baseUrl}/api/dashboard-api-groups`);
+        const res = await fetch(`${baseUrl}/api/holdings/dashboard-api-groups`);
         if (res.ok) {
             const groups = await res.json();
             return groups.find((g: any) => String(g.id) === groupId) || groups[0];

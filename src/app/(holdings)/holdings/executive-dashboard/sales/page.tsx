@@ -1,13 +1,6 @@
 import React from "react";
 import { ChevronRight } from "lucide-react";
-import { 
-    Breadcrumb,
-    BreadcrumbItem,
-    BreadcrumbLink,
-    BreadcrumbList,
-    BreadcrumbPage,
-    BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+
 
 import { GroupPreviewCard } from "./GroupPreviewCard";
 
@@ -38,23 +31,7 @@ export default async function SalesGroupListPage() {
 
     return (
         <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-hidden bg-background">
-            <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:h-16 px-4">
-                <Breadcrumb>
-                    <BreadcrumbList>
-                        <BreadcrumbItem className="hidden md:block">
-                            <BreadcrumbLink href="/holdings/executive-dashboard">Holdings</BreadcrumbLink>
-                        </BreadcrumbItem>
-                        <BreadcrumbSeparator className="hidden md:block" />
-                        <BreadcrumbItem>
-                            <BreadcrumbLink href="/holdings/executive-dashboard">Executive Dashboard</BreadcrumbLink>
-                        </BreadcrumbItem>
-                        <BreadcrumbSeparator />
-                        <BreadcrumbItem>
-                            <BreadcrumbPage>Sales Vs Target</BreadcrumbPage>
-                        </BreadcrumbItem>
-                    </BreadcrumbList>
-                </Breadcrumb>
-            </header>
+
 
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-6 md:p-10 text-foreground">
                 <div className="max-w-7xl mx-auto space-y-10">

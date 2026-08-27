@@ -1,150 +1,147 @@
-"use client";
-
 import React from "react";
-import { useDashboardContext } from "@/components/providers/ExecutiveDashboardProvider";
-import { ArrowDownIcon, ArrowUpIcon, MinusIcon } from "lucide-react";
-import { KPI, ChartData } from "@/types/executive-dashboard.schema";
+import Link from "next/link";
+import { ChevronRight, LayoutDashboard, Truck, Activity, Briefcase } from "lucide-react";
+import { 
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbList,
+    BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GroupPreviewCard } from "./sales/GroupPreviewCard";
 
-export default function ExecutiveDashboardPage() {
-  const { data, isLoading, error } = useDashboardContext();
+async function getDashboardGroups() {
+    try {
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+        const res = await fetch(`${baseUrl}/api/dashboard-api-groups`, { cache: 'no-store' });
+        if (res.ok) {
+            return await res.json();
+        }
+    } catch (e) {
+        console.error("Failed to fetch dashboard groups:", e);
+    }
+    return [];
+}
 
-  if (isLoading) {
+export default async function ExecutiveDashboardRootPage() {
+    const rawGroups = await getDashboardGroups();
+
+    // Group the APIs by category
+    const salesGroups = rawGroups.filter((g: any) => g.category === 'distribution-sales' || g.category === 'sales');
+    const logisticsGroups = rawGroups.filter((g: any) => g.category === 'logistics-fullfillment-rate' || g.category === 'logistics');
+    const otherGroups = rawGroups.filter((g: any) => !['distribution-sales', 'sales', 'logistics-fullfillment-rate', 'logistics'].includes(g.category));
+
     return (
-      <div className="p-8 space-y-6 animate-pulse">
-        <div className="h-10 bg-gray-200 rounded w-1/4"></div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          <div className="h-80 bg-gray-200 rounded-lg"></div>
-          <div className="h-80 bg-gray-200 rounded-lg"></div>
-        </div>
-      </div>
-    );
-  }
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-hidden bg-background">
+            <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:h-16 px-4">
+                <Breadcrumb>
+                    <BreadcrumbList>
+                        <BreadcrumbItem>
+                            <BreadcrumbPage>Executive Dashboard Overview</BreadcrumbPage>
+                        </BreadcrumbItem>
+                    </BreadcrumbList>
+                </Breadcrumb>
+            </header>
 
-  if (error) {
-    return (
-      <div className="p-8">
-        <div className="bg-red-50 border-l-4 border-red-400 p-4">
-          <div className="flex">
-            <div className="ml-3">
-              <p className="text-sm text-red-700">
-                Error loading dashboard: {error}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) return null;
-
-  return (
-    <div className="p-8 space-y-8 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Executive Dashboard</h1>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {data.kpis.map((kpi: KPI) => (
-          <div key={kpi.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all hover:shadow-md">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">{kpi.label}</h3>
-            <div className="flex items-baseline space-x-2">
-              <p className="text-3xl font-semibold text-gray-900">
-                {kpi.label.includes("Revenue") ? "$" : ""}
-                {kpi.value.toLocaleString()}
-              </p>
-            </div>
-            {kpi.trend !== undefined && (
-              <div className="mt-4 flex items-center text-sm">
-                {kpi.trendDirection === "up" ? (
-                  <ArrowUpIcon className="w-4 h-4 text-emerald-500 mr-1" />
-                ) : kpi.trendDirection === "down" ? (
-                  <ArrowDownIcon className="w-4 h-4 text-rose-500 mr-1" />
-                ) : (
-                  <MinusIcon className="w-4 h-4 text-gray-400 mr-1" />
-                )}
-                <span
-                  className={
-                    kpi.trendDirection === "up"
-                      ? "text-emerald-600 font-medium"
-                      : kpi.trendDirection === "down"
-                      ? "text-rose-600 font-medium"
-                      : "text-gray-500 font-medium"
-                  }
-                >
-                  {kpi.trend}%
-                </span>
-                <span className="text-gray-400 ml-2">vs last month</span>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-6">Revenue Overview</h3>
-          <div className="h-64 flex items-end justify-between space-x-2">
-            {/* Simple CSS-based bar chart for demonstration */}
-            {data.revenueChart.map((point: ChartData) => {
-              const max = Math.max(...data.revenueChart.map((d: ChartData) => d.value));
-              const heightPercent = (point.value / max) * 100;
-              return (
-                <div key={point.name} className="flex flex-col items-center flex-1 group">
-                  <div className="w-full flex justify-center h-full items-end relative">
-                    <div 
-                      className="w-full max-w-[40px] bg-blue-500 rounded-t-sm transition-all duration-500 group-hover:bg-blue-600 relative"
-                      style={{ height: `${heightPercent}%` }}
-                    >
-                      <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded transition-opacity">
-                        ${point.value.toLocaleString()}
-                      </div>
+            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-6 md:p-10 text-foreground">
+                <div className="max-w-7xl mx-auto space-y-10">
+                    
+                    {/* --- HEADER --- */}
+                    <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-muted-foreground/60 mb-1 text-[10px] uppercase font-black tracking-[0.2em]">
+                                <span>Holdings Intelligence</span> <ChevronRight className="h-3 w-3" /> 
+                                <span className="text-primary font-black">Executive Dashboard</span>
+                            </div>
+                            <h2 className="text-4xl font-black tracking-tight text-foreground uppercase italic leading-none">
+                                HOLDINGS <span className="text-primary">OVERVIEW</span>
+                            </h2>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">
+                                Centralized monitoring for all subsidiaries and business units
+                            </p>
+                        </div>
                     </div>
-                  </div>
-                  <span className="text-xs text-gray-500 mt-2">{point.name}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-6">Patient Activity</h3>
-          <div className="h-64 flex items-end justify-between space-x-2">
-            {data.patientActivityChart.map((point: ChartData) => {
-              const max = Math.max(...data.patientActivityChart.map((d: ChartData) => Math.max(d.value, d.secondaryValue || 0)));
-              const height1 = (point.value / max) * 100;
-              const height2 = ((point.secondaryValue || 0) / max) * 100;
-              return (
-                <div key={point.name} className="flex flex-col items-center flex-1">
-                  <div className="w-full flex justify-center h-full items-end space-x-1">
-                    <div 
-                      className="w-1/2 max-w-[20px] bg-indigo-500 rounded-t-sm transition-all duration-500"
-                      style={{ height: `${height1}%` }}
-                      title={`Value: ${point.value}`}
-                    />
-                    <div 
-                      className="w-1/2 max-w-[20px] bg-indigo-200 rounded-t-sm transition-all duration-500"
-                      style={{ height: `${height2}%` }}
-                      title={`Secondary: ${point.secondaryValue}`}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-500 mt-2">{point.name}</span>
+                    {/* SALES CATEGORY */}
+                    {salesGroups.length > 0 && (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 border-b border-border/40 pb-2">
+                                <Activity className="h-5 w-5 text-primary" />
+                                <h3 className="text-xl font-black uppercase tracking-tight italic">Distribution & Sales</h3>
+                            </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                                {salesGroups.map((group: any) => (
+                                    <GroupPreviewCard key={group.id} group={group} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* LOGISTICS CATEGORY */}
+                    {logisticsGroups.length > 0 && (
+                        <div className="space-y-4 pt-4">
+                            <div className="flex items-center gap-2 border-b border-border/40 pb-2">
+                                <Truck className="h-5 w-5 text-primary" />
+                                <h3 className="text-xl font-black uppercase tracking-tight italic">Logistics & Fulfillment</h3>
+                            </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                                {logisticsGroups.map((group: any) => (
+                                    <Card key={group.id} className="relative overflow-hidden border-border/40 bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-[220px]">
+                                        <CardHeader className="border-b border-border/40 bg-muted/5 pb-4 relative z-10">
+                                            <div className="flex items-center justify-between">
+                                                <CardTitle className="text-xl font-black uppercase tracking-tight italic">
+                                                    {group.group_name || "Unknown Group"}
+                                                </CardTitle>
+                                                <div className="p-2 bg-background rounded-xl border border-border/40 shadow-sm">
+                                                    <Truck className="h-4 w-4 text-primary opacity-80" />
+                                                </div>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="flex-1 p-6 flex items-center justify-center relative z-10">
+                                            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground/50">
+                                                Logistics metrics configuration pending
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* OTHER CATEGORIES */}
+                    {otherGroups.length > 0 && (
+                        <div className="space-y-4 pt-4">
+                            <div className="flex items-center gap-2 border-b border-border/40 pb-2">
+                                <Briefcase className="h-5 w-5 text-primary" />
+                                <h3 className="text-xl font-black uppercase tracking-tight italic">Other Business Units</h3>
+                            </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                                {otherGroups.map((group: any) => (
+                                    <Card key={group.id} className="relative overflow-hidden border-border/40 bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-[220px]">
+                                        <CardHeader className="border-b border-border/40 bg-muted/5 pb-4 relative z-10">
+                                            <div className="flex items-center justify-between">
+                                                <CardTitle className="text-xl font-black uppercase tracking-tight italic">
+                                                    {group.group_name || "Unknown Group"}
+                                                </CardTitle>
+                                                <div className="p-2 bg-background rounded-xl border border-border/40 shadow-sm">
+                                                    <LayoutDashboard className="h-4 w-4 text-primary opacity-80" />
+                                                </div>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="flex-1 p-6 flex flex-col gap-2 relative z-10 justify-center items-center">
+                                            <Badge variant="outline" className="text-[10px] uppercase tracking-widest">{group.category}</Badge>
+                                            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground/50 mt-2">
+                                                Module Pending
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                 </div>
-              );
-            })}
-          </div>
-          <div className="flex justify-center mt-4 space-x-4 text-xs text-gray-500">
-             <div className="flex items-center"><div className="w-3 h-3 bg-indigo-500 rounded-sm mr-2"></div> New Patients</div>
-             <div className="flex items-center"><div className="w-3 h-3 bg-indigo-200 rounded-sm mr-2"></div> Returning</div>
-          </div>
+            </main>
         </div>
-      </div>
-    </div>
-  );
+    );
 }

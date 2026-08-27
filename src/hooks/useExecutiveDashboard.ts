@@ -16,8 +16,8 @@ export function useExecutiveDashboard() {
       }
       const json = await res.json();
       setData(json);
-    } catch (err: any) {
-      setError(err.message || "An unknown error occurred");
+    } catch (err: unknown) {
+      setError((err as Error).message || "An unknown error occurred");
     } finally {
       setIsLoading(false);
     }

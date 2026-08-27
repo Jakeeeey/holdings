@@ -37,11 +37,11 @@ export const fetchDivisionTargets = async (tseIds: number[], groupId: string): P
     return Array.isArray(data?.data) ? data.data : [];
 };
 
-export const getDivisions = async (groupId: string): Promise<any[]> => {
+export const getDivisions = async (groupId: string): Promise<Record<string, unknown>[]> => {
     const res = await fetch(`/api/holdings/dashboard/directus/${groupId}/items/division?filter[is_bia][_eq]=1`, {
         headers: { "Content-Type": "application/json" },
     });
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const json = await res.json();
-    return (json?.data ?? []) as any[];
+    return (json?.data ?? []) as Record<string, unknown>[];
 };

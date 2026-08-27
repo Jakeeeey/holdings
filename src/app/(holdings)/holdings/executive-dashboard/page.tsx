@@ -1,5 +1,5 @@
 import React from "react";
-import Link from "next/link";
+
 import { ChevronRight, LayoutDashboard, Truck, Activity, Briefcase } from "lucide-react";
 import { 
     Breadcrumb,
@@ -28,9 +28,9 @@ export default async function ExecutiveDashboardRootPage() {
     const rawGroups = await getDashboardGroups();
 
     // Group the APIs by category
-    const salesGroups = rawGroups.filter((g: any) => g.category === 'distribution-sales' || g.category === 'sales');
-    const logisticsGroups = rawGroups.filter((g: any) => g.category === 'logistics-fullfillment-rate' || g.category === 'logistics');
-    const otherGroups = rawGroups.filter((g: any) => !['distribution-sales', 'sales', 'logistics-fullfillment-rate', 'logistics'].includes(g.category));
+    const salesGroups = rawGroups.filter((g: { category: string }) => g.category === 'distribution-sales' || g.category === 'sales');
+    const logisticsGroups = rawGroups.filter((g: { category: string }) => g.category === 'logistics-fullfillment-rate' || g.category === 'logistics');
+    const otherGroups = rawGroups.filter((g: { category: string }) => !['distribution-sales', 'sales', 'logistics-fullfillment-rate', 'logistics'].includes(g.category));
 
     return (
         <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-hidden bg-background">
@@ -71,7 +71,7 @@ export default async function ExecutiveDashboardRootPage() {
                                 <h3 className="text-xl font-black uppercase tracking-tight italic">Distribution & Sales</h3>
                             </div>
                             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                                {salesGroups.map((group: any) => (
+                                {salesGroups.map((group: { id: number, group_name: string, [key: string]: unknown }) => (
                                     <GroupPreviewCard key={group.id} group={group} />
                                 ))}
                             </div>
@@ -86,7 +86,7 @@ export default async function ExecutiveDashboardRootPage() {
                                 <h3 className="text-xl font-black uppercase tracking-tight italic">Logistics & Fulfillment</h3>
                             </div>
                             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                                {logisticsGroups.map((group: any) => (
+                                {logisticsGroups.map((group: { id: number, group_name?: string }) => (
                                     <Card key={group.id} className="relative overflow-hidden border-border/40 bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-[220px]">
                                         <CardHeader className="border-b border-border/40 bg-muted/5 pb-4 relative z-10">
                                             <div className="flex items-center justify-between">
@@ -117,7 +117,7 @@ export default async function ExecutiveDashboardRootPage() {
                                 <h3 className="text-xl font-black uppercase tracking-tight italic">Other Business Units</h3>
                             </div>
                             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                                {otherGroups.map((group: any) => (
+                                {otherGroups.map((group: { id: number, group_name?: string, category?: string }) => (
                                     <Card key={group.id} className="relative overflow-hidden border-border/40 bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-[220px]">
                                         <CardHeader className="border-b border-border/40 bg-muted/5 pb-4 relative z-10">
                                             <div className="flex items-center justify-between">

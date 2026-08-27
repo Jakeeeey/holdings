@@ -12,9 +12,9 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NavUser } from "@/components/shared/app-sidebar/nav-user";
 
-import FulfillmentRatePage from "@/modules/business-intelligence-analytics/scm/supplier-reliability-scorecard/fulfillment-rate/FulfillmentRatePage";
-import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/supplier-reliability-scorecard/fulfillment-rate/providers/ScmFilterProvider";
-import FulfillmentRateSkeleton from "@/app/(business-intelligence-analytics)/bia/_components/FulfillmentRateSkeleton";
+import FulfillmentRatePage from "@/modules/holdings/executive-dashboard/supplier-reliability-scorecard/fulfillment-rate/FulfillmentRatePage";
+import { ScmFilterProvider } from "@/modules/holdings/executive-dashboard/supplier-reliability-scorecard/fulfillment-rate/providers/ScmFilterProvider";
+import FulfillmentRateSkeleton from "@/app/(holdings)/holdings/executive-dashboard/_components/FulfillmentRateSkeleton";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

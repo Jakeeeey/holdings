@@ -9,7 +9,7 @@ async function getGroupConfig(groupId: string) {
         const res = await fetch(`${baseUrl}/api/holdings/dashboard-api-groups`);
         if (res.ok) {
             const groups = await res.json();
-            return groups.find((g: any) => String(g.id) === groupId) || groups[0];
+            return groups.find((g: { id: string | number, [key: string]: unknown }) => String(g.id) === groupId) || groups[0];
         }
     } catch (e) {
         console.error("Failed to fetch dashboard api groups", e);

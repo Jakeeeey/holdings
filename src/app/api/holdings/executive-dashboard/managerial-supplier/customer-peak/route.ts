@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { VSalesPerformanceDataDto } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/executive-health/types";
+import { VSalesPerformanceDataDto } from "@/modules/holdings/executive-dashboard/managerial-supplier/types";
 
 const SPRING_BASE = (process.env.SPRING_API_BASE_URL || "").replace(/\/+$/, "");
 

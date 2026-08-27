@@ -7,13 +7,6 @@ import { VSalesPerformanceDataDto, ProductSalesDetail, AreaTarget } from "../typ
  */
 export const fetchManagerialData = async (startDate: string, endDate: string, groupId: string): Promise<VSalesPerformanceDataDto[]> => {
     try {
-        // 1. Build Query Parameters
-        const params = new URLSearchParams({
-            startDate,
-            endDate,
-            _t: new Date().getTime().toString() // Cache Buster
-        });
-
         const timestamp = new Date().getTime();
         const url = `/api/holdings/dashboard/sales/${groupId}/api/view-sales-performance/all?startDate=${startDate}&endDate=${endDate}&_t=${timestamp}`;
 

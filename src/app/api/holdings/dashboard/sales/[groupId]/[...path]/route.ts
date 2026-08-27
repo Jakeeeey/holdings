@@ -8,7 +8,7 @@ async function getGroupConfig(groupId: string) {
         const res = await fetch(`${baseUrl}/api/holdings/dashboard-api-groups`);
         if (res.ok) {
             const groups = await res.json();
-            return groups.find((g: any) => String(g.id) === groupId) || groups[0];
+            return groups.find((g: { id: string | number, [key: string]: unknown }) => String(g.id) === groupId) || groups[0];
         }
     } catch (e) {
         console.error("Failed to fetch dashboard api groups", e);
@@ -40,7 +40,7 @@ function pickForwardHeaders(req: NextRequest, authHeaderOverride?: string) {
     return headers;
 }
 
-async function performLogin(group: any): Promise<string | null> {
+async function performLogin(group: { username?: string, password_hash?: string, springboot: string }): Promise<string | null> {
     if (!group.username || !group.password_hash) return null;
     
     try {

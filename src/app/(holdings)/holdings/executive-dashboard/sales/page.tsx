@@ -1,6 +1,5 @@
 import React from "react";
-import Link from "next/link";
-import { ChevronRight, ArrowRight, LayoutDashboard, Target, Activity, Trophy, Truck } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { 
     Breadcrumb,
     BreadcrumbItem,
@@ -9,18 +8,6 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-
-// Formatting helpers
-const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
-const formatShort = (val: number) => {
-    const absVal = Math.abs(val);
-    const sign = val < 0 ? "-" : "";
-    if (absVal >= 1000000) return `${sign}₱${(absVal / 1000000).toFixed(1)}M`;
-    if (absVal >= 1000) return `${sign}₱${(absVal / 1000).toFixed(0)}k`;
-    return `${sign}₱${absVal.toFixed(0)}`;
-};
 
 import { GroupPreviewCard } from "./GroupPreviewCard";
 
@@ -90,7 +77,7 @@ export default async function SalesGroupListPage() {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {rawGroups.map((group: any) => (
+                        {rawGroups.map((group: { id: number, group_name: string, [key: string]: unknown }) => (
                             <GroupPreviewCard key={group.id} group={group} />
                         ))}
                     </div>

@@ -48,7 +48,7 @@ function ExecutiveHealthContent({ groupId }: { groupId: string }) {
 
                 setRawData(data);
                 setTargets(companyTargets);
-                setDivisions(metadataDivs);
+                setDivisions(metadataDivs as { division_id: number; division_name: string; }[]);
 
                 if (companyTargets.length > 0) {
                     const divTargets = await fetchDivisionTargets(companyTargets.map(t => t.id), groupId);

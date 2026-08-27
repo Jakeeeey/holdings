@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ProductSalesDetail } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/managerial-supplier/types";
+import { ProductSalesDetail } from "@/modules/holdings/executive-dashboard/managerial-supplier/types";
 
 const SPRING_BASE = (process.env.SPRING_API_BASE_URL || "").replace(/\/+$/, "");
 

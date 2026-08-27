@@ -13,9 +13,9 @@ import { NavUser } from "@/components/shared/app-sidebar/nav-user";
 
 import { cookies } from "next/headers";
 
-import LeadTimeVariancePage from "@/modules/business-intelligence-analytics/scm/supplier-reliability-scorecard/lead-time-variance/LeadTimeVariancePage";
-import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/supplier-reliability-scorecard/lead-time-variance/providers/ScmFilterProvider";
-import LeadTimeVarianceSkeleton from "@/app/(business-intelligence-analytics)/bia/_components/LeadTimeVarianceSkeleton";
+import LeadTimeVariancePage from "@/modules/holdings/executive-dashboard/supplier-reliability-scorecard/lead-time-variance/LeadTimeVariancePage";
+import { ScmFilterProvider } from "@/modules/holdings/executive-dashboard/supplier-reliability-scorecard/lead-time-variance/providers/ScmFilterProvider";
+import LeadTimeVarianceSkeleton from "@/app/(holdings)/holdings/executive-dashboard/_components/LeadTimeVarianceSkeleton";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

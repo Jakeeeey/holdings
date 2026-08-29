@@ -56,7 +56,7 @@ export function LogisticsPreviewCard({ group }: { group: { id: number; group_nam
     const isExcellent = fulfillmentRate >= 90;
 
     return (
-        <Link href={`/holdings/logistics-performance/driver-kpi`} className="block h-full cursor-pointer group">
+        <Link href={`/holdings/executive-dashboard/logistics/${group.id}`} className="block h-full cursor-pointer group">
             <Card className="relative overflow-hidden border-border/40 bg-card hover:border-emerald-500/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-full min-h-[260px]">
                 
                 {/* Premium Background Glows */}

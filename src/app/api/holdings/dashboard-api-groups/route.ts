@@ -3,11 +3,15 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get("category") || "distribution-sales";
+    const category = searchParams.get("category");
 
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://goatedcodoer:8056";
     // Attempt to fetch from Directus
-    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/items/dashboard_api?filter[category][_eq]=${category}`, {
+    const fetchUrl = category 
+      ? `${baseUrl.replace(/\/$/, "")}/items/dashboard_api?filter[category][_eq]=${category}`
+      : `${baseUrl.replace(/\/$/, "")}/items/dashboard_api`;
+      
+    const res = await fetch(fetchUrl, {
       headers: {
         'Authorization': `Bearer ${process.env.DIRECTUS_STATIC_TOKEN}`
       }

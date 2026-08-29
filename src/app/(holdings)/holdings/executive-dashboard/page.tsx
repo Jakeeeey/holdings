@@ -5,6 +5,7 @@ import { ChevronRight, LayoutDashboard, Truck, Activity, Briefcase } from "lucid
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GroupPreviewCard } from "./sales/GroupPreviewCard";
+import { LogisticsPreviewCard } from "./logistics/LogisticsPreviewCard";
 
 async function getDashboardGroups() {
     try {
@@ -73,24 +74,8 @@ export default async function ExecutiveDashboardRootPage() {
                                 <h3 className="text-xl font-black uppercase tracking-tight italic">Logistics & Fulfillment</h3>
                             </div>
                             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                                {logisticsGroups.map((group: { id: number, group_name?: string }) => (
-                                    <Card key={group.id} className="relative overflow-hidden border-border/40 bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-[220px]">
-                                        <CardHeader className="border-b border-border/40 bg-muted/5 pb-4 relative z-10">
-                                            <div className="flex items-center justify-between">
-                                                <CardTitle className="text-xl font-black uppercase tracking-tight italic">
-                                                    {group.group_name || "Unknown Group"}
-                                                </CardTitle>
-                                                <div className="p-2 bg-background rounded-xl border border-border/40 shadow-sm">
-                                                    <Truck className="h-4 w-4 text-primary opacity-80" />
-                                                </div>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="flex-1 p-6 flex items-center justify-center relative z-10">
-                                            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground/50">
-                                                Logistics metrics configuration pending
-                                            </p>
-                                        </CardContent>
-                                    </Card>
+                                {logisticsGroups.map((group: { id: number, group_name: string, [key: string]: unknown }) => (
+                                    <LogisticsPreviewCard key={group.id} group={group} />
                                 ))}
                             </div>
                         </div>

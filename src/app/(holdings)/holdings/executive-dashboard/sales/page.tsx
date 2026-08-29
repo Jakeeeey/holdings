@@ -7,7 +7,7 @@ import { GroupPreviewCard } from "./GroupPreviewCard";
 async function getSalesGroups() {
     try {
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-        const res = await fetch(`${baseUrl}/api/holdings/dashboard-api-groups`, { cache: 'no-store' });
+        const res = await fetch(`${baseUrl}/api/holdings/dashboard-api-groups?category=distribution-sales`, { cache: 'no-store' });
         if (res.ok) {
             return await res.json();
         }

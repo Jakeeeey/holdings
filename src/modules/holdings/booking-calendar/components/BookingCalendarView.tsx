@@ -17,7 +17,8 @@ import {
   subWeeks,
   addDays,
   subDays,
-  isToday
+  isToday,
+  setHours
 } from "date-fns";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin, Clock, FileText, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,10 @@ export const BookingCalendarView: React.FC = () => {
     }
     return format(currentDate, "MMMM d, yyyy");
   }, [currentDate, viewMode]);
+
+  const START_HOUR = 7; // 7 AM
+  const END_HOUR = 19; // 7 PM
+  const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }).map((_, i) => START_HOUR + i);
 
   if (isLoading) {
     return (
@@ -177,65 +182,177 @@ export const BookingCalendarView: React.FC = () => {
       </CardHeader>
 
       <CardContent className="p-0 flex-1 flex flex-col overflow-hidden bg-slate-50/50">
-        <div className={`grid ${viewMode === "day" ? "grid-cols-1" : "grid-cols-7"} border-b border-slate-200 bg-white shadow-sm z-10`}>
-          {(viewMode === "day" ? [format(currentDate, 'EEEE')] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']).map(day => (
-            <div key={day} className="py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider border-r border-slate-100 last:border-r-0">
-              {day}
-            </div>
-          ))}
-        </div>
-        <div className={`flex-1 grid ${viewMode === "day" ? "grid-cols-1" : "grid-cols-7"} ${viewMode === "month" ? "grid-rows-5" : "grid-rows-1"} bg-slate-200 gap-px`}>
-          {daysInGrid.map((day, idx) => {
-            const isCurrentMonth = isSameMonth(day, currentDate);
-            const isDayToday = isToday(day);
-            
-            // Find requests for this day
-            const dayRequests = filteredRequests.filter(req => {
-              if (!req.start_time) return false;
-              return isSameDay(parseISO(req.start_time), day);
-            }).sort((a, b) => parseISO(a.start_time!).getTime() - parseISO(b.start_time!).getTime());
-
-            return (
-              <div 
-                key={idx} 
-                className={`min-h-[120px] bg-white p-2 flex flex-col transition-colors hover:bg-slate-50/80 ${!isCurrentMonth ? 'opacity-40 bg-slate-50' : ''}`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full ${isDayToday ? 'bg-blue-600 text-white shadow-md' : 'text-slate-700'}`}>
-                    {format(day, 'd')}
-                  </span>
-                  {dayRequests.length > 0 && (
-                    <span className="text-[10px] font-semibold text-slate-400">{dayRequests.length} meetings</span>
-                  )}
+        {viewMode === "month" ? (
+          <>
+            <div className={`grid grid-cols-7 border-b border-slate-200 bg-white shadow-sm z-10`}>
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                <div key={day} className="py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider border-r border-slate-100 last:border-r-0">
+                  {day}
                 </div>
-                <div className="flex flex-col gap-1.5 overflow-y-auto custom-scrollbar flex-1 pr-1">
-                  {dayRequests.map(req => {
-                    const room = rooms.find(r => r.id === req.room_id);
-                    const isApproved = req.status.toLowerCase() === 'approved';
-                    
+              ))}
+            </div>
+            <div className={`flex-1 grid grid-cols-7 grid-rows-5 bg-slate-200 gap-px`}>
+              {daysInGrid.map((day, idx) => {
+                const isCurrentMonth = isSameMonth(day, currentDate);
+                const isDayToday = isToday(day);
+                
+                // Find requests for this day
+                const dayRequests = filteredRequests.filter(req => {
+                  if (!req.start_time) return false;
+                  return isSameDay(parseISO(req.start_time), day);
+                }).sort((a, b) => parseISO(a.start_time!).getTime() - parseISO(b.start_time!).getTime());
+
+                return (
+                  <div 
+                    key={idx} 
+                    className={`min-h-[120px] bg-white p-2 flex flex-col transition-colors hover:bg-slate-50/80 ${!isCurrentMonth ? 'opacity-40 bg-slate-50' : ''}`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full ${isDayToday ? 'bg-blue-600 text-white shadow-md' : 'text-slate-700'}`}>
+                        {format(day, 'd')}
+                      </span>
+                      {dayRequests.length > 0 && (
+                        <span className="text-[10px] font-semibold text-slate-400">{dayRequests.length} meetings</span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1.5 overflow-y-auto custom-scrollbar flex-1 pr-1">
+                      {dayRequests.map(req => {
+                        const room = rooms.find(r => r.id === req.room_id);
+                        const isApproved = req.status.toLowerCase() === 'approved';
+                        
+                        return (
+                          <div 
+                            key={req.id}
+                            onClick={() => setSelectedRequest(req)}
+                            className={`text-xs px-2 py-1.5 rounded-md border shadow-sm cursor-pointer transition-transform hover:scale-[1.02] ${
+                              isApproved 
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                                : 'bg-amber-50 border-amber-200 text-amber-800'
+                            }`}
+                          >
+                            <div className="font-bold truncate">{req.title}</div>
+                            <div className="flex items-center justify-between mt-1 opacity-80">
+                              <span className="text-[10px]">{format(parseISO(req.start_time!), 'h:mm a')}</span>
+                              <span className="text-[10px] truncate max-w-[60px]">{room?.name || `Room ${req.room_id}`}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 overflow-auto max-h-[700px] custom-scrollbar">
+            <div className={`min-w-[${viewMode === 'week' ? '800px' : '100%'}] flex flex-col relative`}>
+              
+              {/* Header Row (Days of the week or single day) */}
+              <div className={`grid ${viewMode === 'week' ? 'grid-cols-[80px_1fr_1fr_1fr_1fr_1fr_1fr_1fr]' : 'grid-cols-[80px_1fr]'} sticky top-0 bg-slate-50 border-b border-slate-200 z-30`}>
+                <div className="border-r border-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 uppercase tracking-wider h-14">
+                  Time
+                </div>
+                {daysInGrid.map((day, idx) => {
+                  const isDayToday = isSameDay(day, new Date());
+                  return (
+                    <div key={idx} className={`border-r border-slate-200 flex flex-col items-center justify-center h-14 ${isDayToday ? 'bg-blue-50/80' : 'bg-slate-50'}`}>
+                      <span className={`text-xs font-bold uppercase tracking-wider ${isDayToday ? 'text-blue-600' : 'text-slate-500'}`}>
+                        {format(day, 'EEE')}
+                      </span>
+                      <span className={`text-base font-bold mt-0.5 ${isDayToday ? 'text-blue-700 bg-blue-100/50 px-2 rounded-md' : 'text-slate-900'}`}>
+                        {format(day, 'MMM d')}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Grid Body */}
+              <div className="flex flex-1 relative bg-white">
+                {/* Time Label Column */}
+                <div className="w-[80px] flex-shrink-0 flex flex-col border-r border-slate-200 bg-slate-50/50 z-20">
+                  {hours.map((hour) => (
+                    <div key={`time-${hour}`} className="border-b border-slate-200 flex items-start justify-center py-2 text-xs font-semibold text-slate-500 h-24">
+                      {format(setHours(new Date(), hour), 'h a')}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Day Columns */}
+                <div className={`flex-1 grid ${viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-1'} relative`}>
+                  {daysInGrid.map((day, dayIdx) => {
+                    const dayRequests = filteredRequests.filter(req => {
+                      if (!req.start_time) return false;
+                      return isSameDay(parseISO(req.start_time), day);
+                    });
+
                     return (
-                      <div 
-                        key={req.id}
-                        onClick={() => setSelectedRequest(req)}
-                        className={`text-xs px-2 py-1.5 rounded-md border shadow-sm cursor-pointer transition-transform hover:scale-[1.02] ${
-                          isApproved 
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-                            : 'bg-amber-50 border-amber-200 text-amber-800'
-                        }`}
-                      >
-                        <div className="font-bold truncate">{req.title}</div>
-                        <div className="flex items-center justify-between mt-1 opacity-80">
-                          <span className="text-[10px]">{format(parseISO(req.start_time!), 'h:mm a')}</span>
-                          <span className="text-[10px] truncate max-w-[60px]">{room?.name || `Room ${req.room_id}`}</span>
-                        </div>
+                      <div key={`day-${dayIdx}`} className="border-r border-slate-100 relative group">
+                        {/* Background Grid Lines (1 hour = h-24 = 96px) */}
+                        {hours.map((hour) => (
+                          <div key={`grid-${hour}`} className="h-24 border-b border-slate-100 w-full hover:bg-slate-50 transition-colors" />
+                        ))}
+
+                        {/* Bookings for the day */}
+                        {dayRequests.map(req => {
+                          if (!req.start_time || !req.end_time) return null;
+                          
+                          const start = parseISO(req.start_time);
+                          const end = parseISO(req.end_time);
+                          
+                          const startH = start.getHours() + start.getMinutes() / 60;
+                          const endH = end.getHours() + end.getMinutes() / 60;
+                          
+                          if (endH <= START_HOUR || startH >= END_HOUR + 1) return null;
+                          
+                          const visibleStartH = Math.max(startH, START_HOUR);
+                          const visibleEndH = Math.min(endH, END_HOUR + 1);
+                          
+                          const top = (visibleStartH - START_HOUR) * 96;
+                          const height = (visibleEndH - visibleStartH) * 96;
+
+                          const room = rooms.find(r => r.id === req.room_id);
+                          const isApproved = req.status.toLowerCase() === 'approved';
+
+                          return (
+                            <div 
+                              key={req.id}
+                              className="absolute left-1 right-1 px-2 py-1.5 rounded-md border shadow-sm flex flex-col z-10 transition-transform hover:scale-[1.02] cursor-pointer overflow-hidden"
+                              onClick={() => setSelectedRequest(req)}
+                              style={{
+                                top: `${top + 2}px`,
+                                height: `${Math.max(height - 4, 30)}px`,
+                                backgroundColor: isApproved ? '#ecfdf5' : '#fffbeb',
+                                borderColor: isApproved ? '#a7f3d0' : '#fde68a',
+                                color: isApproved ? '#065f46' : '#92400e',
+                              }}
+                              title={`${req.title}\n${room?.name}\n${req.requested_by_name ? `By: ${req.requested_by_name}\n` : ''}${req.purpose ? `Purpose: ${req.purpose}\n` : ''}${format(start, 'h:mm a')} - ${format(end, 'h:mm a')}`}
+                            >
+                              <span className="font-bold truncate block text-xs">{req.title}</span>
+                              <div className="flex items-center gap-1 mt-0.5 opacity-80 truncate text-[10px]">
+                                <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+                                <span className="truncate">{room?.name || `Room #${req.room_id}`}</span>
+                              </div>
+                              {req.requested_by_name && (
+                                <div className="text-[10px] opacity-80 mt-0.5 truncate font-medium">
+                                  {req.requested_by_name}
+                                </div>
+                              )}
+                              <div className="mt-auto text-[9px] font-medium opacity-70 pt-1">
+                                {format(start, 'h:mm a')} - {format(end, 'h:mm a')}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          </div>
+        )}
       </CardContent>
 
       <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)}>

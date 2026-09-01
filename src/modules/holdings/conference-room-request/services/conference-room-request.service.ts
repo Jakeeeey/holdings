@@ -47,10 +47,13 @@ async function getHostCompanyDetails(): Promise<HostCompanyDetails> {
   const companyData = await companyRes.json();
   const company = companyData?.data?.[0];
 
+  console.log(`[getHostCompanyDetails] Fetched companyId: ${companyId}`);
+  console.log(`[getHostCompanyDetails] Fetched company record:`, company);
+
   if (!company || !company.directus) throw new Error("Target company Directus URL is missing");
 
   return {
-    url: company.directus,
+    url: company.directus.replace(/\/$/, ""),
     token: company.directus_token || "",
   };
 }
@@ -61,17 +64,23 @@ export const fetchGlobalConferenceRooms = async (): Promise<ConferenceRoomInput[
   const headers: HeadersInit = { "Content-Type": "application/json" };
   if (host.token) headers["Authorization"] = `Bearer ${host.token}`;
 
-  const response = await fetch(`${host.url}/items/conference_room`, {
+  const endpoint = `${host.url}/items/conference_room`;
+  console.log(`[fetchGlobalConferenceRooms] Calling API: ${endpoint}`);
+
+  const response = await fetch(endpoint, {
     method: "GET",
     headers,
     cache: "no-store",
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[fetchGlobalConferenceRooms] ERROR ${response.status} from ${endpoint}:`, errorText);
     throw new Error(`Failed to fetch global conference rooms: ${response.statusText}`);
   }
 
   const data = await response.json();
+  console.log(`[fetchGlobalConferenceRooms] Success. Retrieved ${data?.data?.length || 0} rooms.`);
   return data.data || [];
 };
 
@@ -87,6 +96,8 @@ export const fetchMyRequests = async (userId?: number): Promise<ConferenceRoomRe
     endpoint += `?filter[requested_by][_eq]=${userId}`;
   }
 
+  console.log(`[fetchMyRequests] Calling API: ${endpoint}`);
+
   const response = await fetch(endpoint, {
     method: "GET",
     headers,
@@ -94,10 +105,13 @@ export const fetchMyRequests = async (userId?: number): Promise<ConferenceRoomRe
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[fetchMyRequests] ERROR ${response.status} from ${endpoint}:`, errorText);
     throw new Error(`Failed to fetch requests: ${response.statusText}`);
   }
 
   const data = await response.json();
+  console.log(`[fetchMyRequests] Success. Retrieved ${data?.data?.length || 0} items.`);
   return data.data || [];
 };
 
@@ -107,16 +121,22 @@ export const submitConferenceRoomRequest = async (payload: ConferenceRoomRequest
   const headers: HeadersInit = { "Content-Type": "application/json" };
   if (host.token) headers["Authorization"] = `Bearer ${host.token}`;
 
-  const response = await fetch(`${host.url}/items/conference_room_request`, {
+  const endpoint = `${host.url}/items/conference_room_request`;
+  console.log(`[submitConferenceRoomRequest] POSTing to API: ${endpoint}`);
+
+  const response = await fetch(endpoint, {
     method: "POST",
     headers,
     body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[submitConferenceRoomRequest] ERROR ${response.status} from ${endpoint}:`, errorText);
     throw new Error(`Failed to submit request: ${response.statusText}`);
   }
 
   const data = await response.json();
+  console.log(`[submitConferenceRoomRequest] Success.`);
   return { success: true, data: data.data };
 };

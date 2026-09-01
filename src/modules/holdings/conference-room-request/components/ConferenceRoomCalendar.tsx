@@ -77,86 +77,109 @@ export const ConferenceRoomCalendar: React.FC = () => {
       </CardHeader>
 
       <CardContent className="p-0 overflow-auto flex-1 max-h-[700px] custom-scrollbar">
-        <div className="min-w-[800px] grid grid-cols-[80px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] relative">
+        <div className="min-w-[800px] flex flex-col relative">
           
           {/* Header Row (Days of the week) */}
-          <div className="sticky top-0 bg-slate-50 border-b border-r border-slate-200 z-20 flex items-center justify-center text-xs font-bold text-slate-500 uppercase tracking-wider h-14">
-            Time
+          <div className="grid grid-cols-[80px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] sticky top-0 bg-slate-50 border-b border-slate-200 z-30">
+            <div className="border-r border-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 uppercase tracking-wider h-14">
+              Time
+            </div>
+            {weekDays.map((day, idx) => {
+              const isToday = isSameDay(day, new Date());
+              return (
+                <div key={idx} className={`border-r border-slate-200 flex flex-col items-center justify-center h-14 ${isToday ? 'bg-blue-50/80' : 'bg-slate-50'}`}>
+                  <span className={`text-xs font-bold uppercase tracking-wider ${isToday ? 'text-blue-600' : 'text-slate-500'}`}>
+                    {format(day, 'EEE')}
+                  </span>
+                  <span className={`text-base font-bold mt-0.5 ${isToday ? 'text-blue-700 bg-blue-100/50 px-2 rounded-md' : 'text-slate-900'}`}>
+                    {format(day, 'MMM d')}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-          {weekDays.map((day, idx) => {
-            const isToday = isSameDay(day, new Date());
-            return (
-              <div key={idx} className={`sticky top-0 border-b border-r border-slate-200 z-10 flex flex-col items-center justify-center h-14 ${isToday ? 'bg-blue-50/80' : 'bg-slate-50'}`}>
-                <span className={`text-xs font-bold uppercase tracking-wider ${isToday ? 'text-blue-600' : 'text-slate-500'}`}>
-                  {format(day, 'EEE')}
-                </span>
-                <span className={`text-base font-bold mt-0.5 ${isToday ? 'text-blue-700 bg-blue-100/50 px-2 rounded-md' : 'text-slate-900'}`}>
-                  {format(day, 'MMM d')}
-                </span>
-              </div>
-            );
-          })}
 
           {/* Grid Body */}
-          {hours.map((hour) => (
-            <React.Fragment key={`row-${hour}`}>
-              {/* Time Label Column */}
-              <div className="border-b border-r border-slate-200 bg-slate-50/50 flex items-start justify-center py-2 text-xs font-semibold text-slate-500 h-24 sticky left-0 z-10">
-                {format(setHours(new Date(), hour), 'h a')}
-              </div>
+          <div className="flex flex-1 relative bg-white">
+            {/* Time Label Column */}
+            <div className="w-[80px] flex-shrink-0 flex flex-col border-r border-slate-200 bg-slate-50/50 z-20">
+              {hours.map((hour) => (
+                <div key={`time-${hour}`} className="border-b border-slate-200 flex items-start justify-center py-2 text-xs font-semibold text-slate-500 h-24">
+                  {format(setHours(new Date(), hour), 'h a')}
+                </div>
+              ))}
+            </div>
 
-              {/* Day Cells */}
+            {/* Day Columns */}
+            <div className="flex-1 grid grid-cols-7 relative">
               {weekDays.map((day, dayIdx) => {
-                const cellStart = setHours(startOfDay(day), hour);
-                const cellEnd = addHours(cellStart, 1);
-                
-                // Find requests that overlap with this 1-hour cell
-                const cellRequests = filteredRequests.filter(req => {
-                  if (!req.start_time || !req.end_time) return false;
-                  const reqStart = parseISO(req.start_time);
-                  const reqEnd = parseISO(req.end_time);
-                  
-                  // A request overlaps if it starts before cellEnd AND ends after cellStart
-                  return reqStart < cellEnd && reqEnd > cellStart;
+                // Find requests for this day
+                const dayRequests = filteredRequests.filter(req => {
+                  if (!req.start_time) return false;
+                  return isSameDay(parseISO(req.start_time), day);
                 });
 
                 return (
-                  <div key={`cell-${dayIdx}-${hour}`} className="border-b border-r border-slate-100 h-24 p-1 relative hover:bg-slate-50 transition-colors group">
-                    {/* Add Booking Button Overlay (Hidden until hover) */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-0">
-                      <span className="text-xs font-bold text-slate-300">Book Slot</span>
-                    </div>
+                  <div key={`day-${dayIdx}`} className="border-r border-slate-100 relative group">
+                    {/* Background Grid Lines (1 hour = h-24 = 96px) */}
+                    {hours.map((hour) => (
+                      <div key={`grid-${hour}`} className="h-24 border-b border-slate-100 w-full hover:bg-slate-50 transition-colors" />
+                    ))}
 
-                    {/* Bookings */}
-                    <div className="relative z-10 w-full h-full flex gap-1 flex-col overflow-hidden">
-                      {cellRequests.map(req => {
-                        const room = rooms.find(r => r.id === req.room_id);
-                        const isApproved = req.status.toLowerCase() === 'approved';
-                        
-                        return (
-                          <div 
-                            key={req.id} 
-                            className={`px-2 py-1.5 rounded-md border text-xs shadow-sm flex flex-col justify-center h-full transition-transform hover:scale-[1.02] cursor-pointer ${
-                              isApproved 
-                                ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-                                : 'bg-amber-50 border-amber-200 text-amber-800'
-                            }`}
-                            title={`${req.title}\n${room?.name}\n${format(parseISO(req.start_time), 'h:mm a')} - ${format(parseISO(req.end_time), 'h:mm a')}`}
-                          >
-                            <span className="font-bold truncate block">{req.title}</span>
-                            <div className="flex items-center gap-1 mt-0.5 opacity-80 truncate">
-                              <MapPin className="w-3 h-3 flex-shrink-0" />
-                              <span className="truncate">{room?.name || `Room #${req.room_id}`}</span>
-                            </div>
+                    {/* Bookings for the day */}
+                    {dayRequests.map(req => {
+                      if (!req.start_time || !req.end_time) return null;
+                      
+                      const start = parseISO(req.start_time);
+                      const end = parseISO(req.end_time);
+                      
+                      // Calculate fractional hours
+                      const startH = start.getHours() + start.getMinutes() / 60;
+                      const endH = end.getHours() + end.getMinutes() / 60;
+                      
+                      // Filter out events completely outside the visible hours
+                      if (endH <= START_HOUR || startH >= END_HOUR + 1) return null;
+                      
+                      // Clamp to visible hours
+                      const visibleStartH = Math.max(startH, START_HOUR);
+                      const visibleEndH = Math.min(endH, END_HOUR + 1);
+                      
+                      // 96px per hour
+                      const top = (visibleStartH - START_HOUR) * 96;
+                      const height = (visibleEndH - visibleStartH) * 96;
+
+                      const room = rooms.find(r => r.id === req.room_id);
+                      const isApproved = req.status.toLowerCase() === 'approved';
+
+                      return (
+                        <div 
+                          key={req.id}
+                          className="absolute left-1 right-1 px-2 py-1.5 rounded-md border text-xs shadow-sm flex flex-col z-10 transition-transform hover:scale-[1.02] cursor-pointer overflow-hidden"
+                          style={{
+                            top: `${top + 2}px`, // +2px for padding
+                            height: `${Math.max(height - 4, 20)}px`, // -4px for padding, min 20px
+                            backgroundColor: isApproved ? '#ecfdf5' : '#fffbeb', // emerald-50 / amber-50
+                            borderColor: isApproved ? '#a7f3d0' : '#fde68a', // emerald-200 / amber-200
+                            color: isApproved ? '#065f46' : '#92400e', // emerald-800 / amber-800
+                          }}
+                          title={`${req.title}\n${room?.name}\n${format(start, 'h:mm a')} - ${format(end, 'h:mm a')}`}
+                        >
+                          <span className="font-bold truncate block">{req.title}</span>
+                          <div className="flex items-center gap-1 mt-0.5 opacity-80 truncate">
+                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">{room?.name || `Room #${req.room_id}`}</span>
                           </div>
-                        );
-                      })}
-                    </div>
+                          <div className="mt-auto text-[10px] font-medium opacity-70">
+                            {format(start, 'h:mm a')} - {format(end, 'h:mm a')}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
-            </React.Fragment>
-          ))}
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

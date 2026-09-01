@@ -6,6 +6,7 @@ import { ConferenceRoomInput } from "../../conference-room/types/conference-room
 
 interface ConferenceRoomRequestContextProps {
   requests: ConferenceRoomRequestInput[];
+  allRequests: ConferenceRoomRequestInput[];
   rooms: ConferenceRoomInput[];
   isLoading: boolean;
   error: string | null;

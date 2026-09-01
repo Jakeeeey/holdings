@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchConferenceRoomById, updateConferenceRoom, deleteConferenceRoom } from "@/modules/holdings/conference-room/services/conference-room.service";
 import { ConferenceRoomSchema } from "@/modules/holdings/conference-room/types/conference-room.schema";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const id = parseInt(params.id, 10);
+    const { id: paramId } = await params;
+    const id = parseInt(paramId, 10);
     if (isNaN(id)) {
       return NextResponse.json({ success: false, message: "Invalid ID format" }, { status: 400 });
     }
@@ -16,9 +17,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const id = parseInt(params.id, 10);
+    const { id: paramId } = await params;
+    const id = parseInt(paramId, 10);
     if (isNaN(id)) {
       return NextResponse.json({ success: false, message: "Invalid ID format" }, { status: 400 });
     }
@@ -37,9 +39,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const id = parseInt(params.id, 10);
+    const { id: paramId } = await params;
+    const id = parseInt(paramId, 10);
     if (isNaN(id)) {
       return NextResponse.json({ success: false, message: "Invalid ID format" }, { status: 400 });
     }

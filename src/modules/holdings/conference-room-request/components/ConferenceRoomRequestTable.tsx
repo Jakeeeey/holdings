@@ -23,10 +23,10 @@ export const ConferenceRoomRequestTable: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'approved': return <Badge variant="default" className="bg-green-500">Approved</Badge>;
-      case 'rejected': return <Badge variant="destructive">Rejected</Badge>;
-      case 'cancelled': return <Badge variant="outline" className="text-muted-foreground">Cancelled</Badge>;
-      default: return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30">Pending</Badge>;
+      case 'approved': return <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 shadow-sm shadow-emerald-500/20 text-white font-bold">Approved</Badge>;
+      case 'rejected': return <Badge variant="destructive" className="bg-red-500 hover:bg-red-600 shadow-sm shadow-red-500/20 font-bold">Rejected</Badge>;
+      case 'cancelled': return <Badge variant="outline" className="text-slate-500 border-slate-300 font-bold bg-slate-50">Cancelled</Badge>;
+      default: return <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-200 shadow-sm shadow-amber-500/10 font-bold">Pending</Badge>;
     }
   };
 
@@ -52,44 +52,54 @@ export const ConferenceRoomRequestTable: React.FC = () => {
   }
 
   return (
-    <Card className="shadow-sm border-muted/60">
-      <CardHeader className="bg-muted/10 border-b pb-4">
-        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <CalendarClock className="w-5 h-5 text-primary" />
-          My Booking Requests
-        </CardTitle>
+    <Card className="shadow-xl shadow-black/10 border-border/60 overflow-hidden bg-background rounded-2xl">
+      <CardHeader className="bg-slate-900 text-white border-b border-border/40 pb-5 px-6 pt-6">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-xl font-bold flex items-center gap-3 tracking-tight">
+            <div className="bg-white/10 p-2.5 rounded-xl text-white shadow-inner">
+              <CalendarClock className="w-5 h-5" />
+            </div>
+            My Booking Requests
+          </CardTitle>
+          <Badge variant="outline" className="bg-white/5 text-white/90 border-white/20 px-3 py-1 text-xs">
+            {requests.length} Total
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="rounded-b-lg overflow-hidden">
+        <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow>
-                <TableHead className="w-[100px]">ID</TableHead>
-                <TableHead>Title & Room</TableHead>
-                <TableHead>Schedule</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Created</TableHead>
+            <TableHeader className="bg-slate-50 border-b border-slate-200/60">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[100px] font-bold text-slate-600 h-12 uppercase text-xs tracking-wider">Ref ID</TableHead>
+                <TableHead className="font-bold text-slate-600 h-12 uppercase text-xs tracking-wider">Booking Details</TableHead>
+                <TableHead className="font-bold text-slate-600 h-12 uppercase text-xs tracking-wider">Schedule</TableHead>
+                <TableHead className="font-bold text-slate-600 h-12 uppercase text-xs tracking-wider">Status</TableHead>
+                <TableHead className="text-right font-bold text-slate-600 h-12 uppercase text-xs tracking-wider">Submitted</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {requests.map((request) => (
-                <TableRow key={request.id} className="hover:bg-muted/10 transition-colors">
-                  <TableCell className="font-medium text-muted-foreground">
-                    #{request.id}
+                <TableRow key={request.id} className="hover:bg-blue-50/50 transition-colors group cursor-default">
+                  <TableCell className="font-medium">
+                    <span className="bg-slate-100 text-slate-600 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-slate-200 shadow-sm">
+                      #{request.id}
+                    </span>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium text-foreground">{request.title}</div>
-                    <div className="flex items-center text-xs text-muted-foreground mt-1 gap-1">
-                      <MapPin className="w-3 h-3" />
+                    <div className="font-bold text-slate-900 tracking-tight text-[15px]">{request.title}</div>
+                    <div className="flex items-center text-xs text-slate-500 mt-1.5 gap-1.5 font-medium">
+                      <MapPin className="w-3.5 h-3.5 text-blue-500" />
                       {getRoomName(request.room_id)}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      <div className="font-medium">
+                      <div className="font-bold text-slate-800 flex items-center gap-2">
                         {request.start_time ? format(new Date(request.start_time), "MMM d, yyyy h:mm a") : "TBD"}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
+                      <div className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
                         to {request.end_time ? format(new Date(request.end_time), "MMM d, yyyy h:mm a") : "TBD"}
                       </div>
                     </div>
@@ -97,7 +107,7 @@ export const ConferenceRoomRequestTable: React.FC = () => {
                   <TableCell>
                     {getStatusBadge(request.status)}
                   </TableCell>
-                  <TableCell className="text-right text-xs text-muted-foreground">
+                  <TableCell className="text-right text-sm font-medium text-slate-500">
                     {request.created_at ? format(new Date(request.created_at), "MMM d, yyyy") : "N/A"}
                   </TableCell>
                 </TableRow>

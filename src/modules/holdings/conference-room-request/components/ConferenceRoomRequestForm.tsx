@@ -80,21 +80,24 @@ export const ConferenceRoomRequestForm: React.FC<ConferenceRoomRequestFormProps>
                       selectedRoomId === room.id ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "hover:border-primary/50 hover:bg-muted/30"
                     }`}
                   >
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 items-center">
                       {room.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={`${process.env.NEXT_PUBLIC_API_BASE_URL || ""}/assets/${room.image}`} alt={room.name} className="w-20 h-20 object-cover rounded-md border" />
+                        <img src={`${process.env.NEXT_PUBLIC_API_BASE_URL || ""}/assets/${room.image}`} alt={room.name} className="w-24 h-24 object-cover rounded-xl shadow-sm border border-border/50" />
                       ) : (
-                        <div className="w-20 h-20 bg-muted rounded-md flex items-center justify-center border">
-                          <MapPin className="w-8 h-8 text-muted-foreground opacity-50" />
+                        <div className="w-24 h-24 bg-gradient-to-br from-muted/50 to-muted rounded-xl flex items-center justify-center border border-border/50 shadow-inner">
+                          <MapPin className="w-8 h-8 text-muted-foreground/60" />
                         </div>
                       )}
-                      <div>
-                        <h4 className="font-semibold text-lg">{room.name}</h4>
-                        <p className="text-sm text-muted-foreground line-clamp-1">{room.description || "No description"}</p>
-                        <p className="text-xs font-medium mt-2 bg-secondary text-secondary-foreground w-fit px-2 py-0.5 rounded-full">
-                          Capacity: {room.capacity}
-                        </p>
+                      <div className="flex flex-col justify-center">
+                        <h4 className="font-bold text-lg text-foreground/90 leading-tight">{room.name}</h4>
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{room.description || "A versatile conference room ready for your next big meeting."}</p>
+                        <div className="flex items-center gap-2 mt-3">
+                          <span className="text-xs font-semibold bg-primary/10 text-primary px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                            Capacity: {room.capacity}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>

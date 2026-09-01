@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 import React, { useEffect, useState, useRef } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
@@ -162,12 +163,13 @@ export const ConferenceRoomForm: React.FC<ConferenceRoomFormProps> = ({ id, onSu
       
       setSelectedFile(null);
       if (onSuccess) onSuccess();
-    } catch (error) {
+    } catch {
       // Handled in hook
     }
   };
 
   const isSubmitting = form.formState.isSubmitting || isUploading;
+  // eslint-disable-next-line react-hooks/incompatible-library
   const currentImage = form.watch("image");
 
   return (

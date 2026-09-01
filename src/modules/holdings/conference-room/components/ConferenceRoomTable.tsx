@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ConferenceRoomForm } from "./ConferenceRoomForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Edit2, Trash2, Plus, Search, Calendar, Users, Building } from "lucide-react";
@@ -153,7 +153,9 @@ export const ConferenceRoomTable = () => {
                             if (activeDays.length === 7) return <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20"><Calendar className="mr-1 h-3 w-3" /> Everyday</Badge>;
                             return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20"><Calendar className="mr-1 h-3 w-3" /> {activeDays.length} days active</Badge>;
                           }
-                        } catch (e) {}
+                        } catch {
+                          // Ignore parsing errors
+                        }
                         return <Badge variant="secondary" className="bg-muted">Not set</Badge>;
                       })()}
                     </TableCell>

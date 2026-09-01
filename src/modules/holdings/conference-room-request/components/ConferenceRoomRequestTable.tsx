@@ -44,7 +44,7 @@ export const ConferenceRoomRequestTable: React.FC = () => {
           </div>
           <h3 className="text-xl font-semibold mb-2">No Requests Found</h3>
           <p className="text-muted-foreground max-w-sm">
-            You haven't requested any conference rooms yet. Click the button above to make your first booking request!
+            You haven&apos;t requested any conference rooms yet. Click the button above to make your first booking request!
           </p>
         </CardContent>
       </Card>

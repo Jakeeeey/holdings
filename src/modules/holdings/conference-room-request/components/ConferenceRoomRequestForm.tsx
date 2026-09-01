@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useForm, SubmitHandler, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ConferenceRoomRequestSchema, ConferenceRoomRequestInput } from "../types/conference-room-request.schema";
 import { useConferenceRoomRequestContext } from "../providers/ConferenceRoomRequestProvider";
@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { CalendarClock, Info, MapPin } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,7 +36,10 @@ export const ConferenceRoomRequestForm: React.FC<ConferenceRoomRequestFormProps>
     },
   });
 
-  const selectedRoomId = form.watch("room_id");
+  const selectedRoomId = useWatch({
+    control: form.control,
+    name: "room_id",
+  });
   const selectedRoom = rooms.find(r => r.id === selectedRoomId);
 
   const onSubmit: SubmitHandler<ConferenceRoomRequestInput> = async (values) => {
@@ -122,7 +124,7 @@ export const ConferenceRoomRequestForm: React.FC<ConferenceRoomRequestFormProps>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Booking: {selectedRoom.name}</p>
-                  <p className="text-xs text-muted-foreground">Please select a time within the room's available schedule.</p>
+                  <p className="text-xs text-muted-foreground">Please select a time within the room&apos;s available schedule.</p>
                 </div>
               </div>
             )}

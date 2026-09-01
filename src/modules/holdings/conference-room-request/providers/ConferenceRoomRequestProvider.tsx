@@ -10,7 +10,7 @@ interface ConferenceRoomRequestContextProps {
   isLoading: boolean;
   error: string | null;
   refresh: () => void;
-  submitRequest: (payload: ConferenceRoomRequestInput) => Promise<any>;
+  submitRequest: (payload: ConferenceRoomRequestInput) => Promise<unknown>;
 }
 
 const ConferenceRoomRequestContext = createContext<ConferenceRoomRequestContextProps | undefined>(undefined);

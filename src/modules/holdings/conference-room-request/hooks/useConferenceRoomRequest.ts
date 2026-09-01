@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { ConferenceRoomRequestInput } from "../types/conference-room-request.schema";
 import { ConferenceRoomInput } from "../../conference-room/types/conference-room.schema";
-import { fetchGlobalConferenceRooms } from "../services/conference-room-request.service";
 
 export const useConferenceRoomRequest = () => {
   const [requests, setRequests] = useState<ConferenceRoomRequestInput[]>([]);

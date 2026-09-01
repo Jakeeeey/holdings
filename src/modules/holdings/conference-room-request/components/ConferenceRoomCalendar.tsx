@@ -2,15 +2,18 @@
 import React, { useState, useMemo } from "react";
 import { useConferenceRoomRequestContext } from "../providers/ConferenceRoomRequestProvider";
 import { format, startOfWeek, addDays, subWeeks, addWeeks, isSameDay, parseISO, addHours, startOfDay, setHours } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin, Clock, FileText, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { ConferenceRoomRequestInput } from "../types/conference-room-request.schema";
 
 export const ConferenceRoomCalendar: React.FC = () => {
   const { allRequests, rooms, isLoading } = useConferenceRoomRequestContext();
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selectedRoomId, setSelectedRoomId] = useState<string>("all");
+  const [selectedRequest, setSelectedRequest] = useState<ConferenceRoomRequestInput | null>(null);
 
   // Filter requests based on selected room
   const filteredRequests = useMemo(() => {
@@ -155,6 +158,7 @@ export const ConferenceRoomCalendar: React.FC = () => {
                         <div 
                           key={req.id}
                           className="absolute left-1 right-1 px-2 py-1.5 rounded-md border shadow-sm flex flex-col z-10 transition-transform hover:scale-[1.02] cursor-pointer overflow-hidden"
+                          onClick={() => setSelectedRequest(req)}
                           style={{
                             top: `${top + 2}px`, // +2px for padding
                             height: `${Math.max(height - 4, 30)}px`, // min height to fit more info
@@ -200,6 +204,51 @@ export const ConferenceRoomCalendar: React.FC = () => {
           </div>
         </div>
       </CardContent>
+
+      <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Meeting Details</DialogTitle>
+            <DialogDescription>
+              Details for the scheduled conference room booking.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedRequest && (
+            <div className="grid gap-4 py-4">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg font-semibold leading-none tracking-tight">{selectedRequest.title}</h3>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                  <MapPin className="w-4 h-4" />
+                  <span>{rooms.find(r => r.id === selectedRequest.room_id)?.name || `Room #${selectedRequest.room_id}`}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="w-4 h-4" />
+                  <span>
+                    {selectedRequest.start_time ? format(parseISO(selectedRequest.start_time), "EEEE, MMM d, yyyy") : ""} <br />
+                    {selectedRequest.start_time ? format(parseISO(selectedRequest.start_time), "h:mm a") : ""} - {selectedRequest.end_time ? format(parseISO(selectedRequest.end_time), "h:mm a") : ""}
+                  </span>
+                </div>
+                {selectedRequest.requested_by_name && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                    <User className="w-4 h-4" />
+                    <span>Requested by {selectedRequest.requested_by_name}</span>
+                  </div>
+                )}
+                {selectedRequest.purpose && (
+                  <div className="flex items-start gap-2 text-sm text-muted-foreground mt-2 bg-slate-50 p-3 rounded-md border border-slate-100">
+                    <FileText className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span className="whitespace-pre-wrap">{selectedRequest.purpose}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedRequest(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

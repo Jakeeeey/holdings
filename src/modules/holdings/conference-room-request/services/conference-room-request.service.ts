@@ -140,3 +140,31 @@ export const submitConferenceRoomRequest = async (payload: ConferenceRoomRequest
   console.log(`[submitConferenceRoomRequest] Success.`);
   return { success: true, data: data.data };
 };
+
+export const fetchAllConferenceRoomRequests = async (): Promise<ConferenceRoomRequestInput[]> => {
+  const host = await getHostCompanyDetails();
+  
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (host.token) headers["Authorization"] = `Bearer ${host.token}`;
+
+  // Fetch only approved or pending requests for the calendar availability
+  const endpoint = `${host.url}/items/conference_room_request?filter[_or][0][status][_eq]=approved&filter[_or][1][status][_eq]=pending`;
+
+  console.log(`[fetchAllConferenceRoomRequests] Calling API: ${endpoint}`);
+
+  const response = await fetch(endpoint, {
+    method: "GET",
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[fetchAllConferenceRoomRequests] ERROR ${response.status} from ${endpoint}:`, errorText);
+    throw new Error(`Failed to fetch all requests: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  console.log(`[fetchAllConferenceRoomRequests] Success. Retrieved ${data?.data?.length || 0} items.`);
+  return data.data || [];
+};

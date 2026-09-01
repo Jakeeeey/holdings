@@ -4,6 +4,7 @@ import { ConferenceRoomInput } from "../../conference-room/types/conference-room
 
 export const useConferenceRoomRequest = () => {
   const [requests, setRequests] = useState<ConferenceRoomRequestInput[]>([]);
+  const [allRequests, setAllRequests] = useState<ConferenceRoomRequestInput[]>([]);
   const [rooms, setRooms] = useState<ConferenceRoomInput[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -12,23 +13,24 @@ export const useConferenceRoomRequest = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // 1. Fetch the user's past/pending requests
-      const reqRes = await fetch("/api/holdings/conference-room-requests");
+      // Fetch the user's past/pending requests, global rooms, and all requests concurrently
+      const [reqRes, roomsRes, allReqRes] = await Promise.all([
+        fetch("/api/holdings/conference-room-requests"),
+        fetch("/api/holdings/conference-room-requests/global-rooms"),
+        fetch("/api/holdings/conference-room-requests/all")
+      ]);
+
       const reqData = await reqRes.json();
-      if (!reqData.success) throw new Error(reqData.message || "Failed to fetch requests");
-      
-      setRequests(reqData.data);
-
-      // 2. Fetch the global conference rooms available for requesting
-      // Since fetchGlobalConferenceRooms needs tokens from the host company API, we do it via a server action or API route.
-      // Wait, we can't call a Server Service directly from the client hook unless it's a Server Action.
-      // Let's create an API route for fetching the global rooms!
-      
-      const roomsRes = await fetch("/api/holdings/conference-room-requests/global-rooms");
       const roomsData = await roomsRes.json();
-      if (!roomsData.success) throw new Error(roomsData.message || "Failed to fetch global rooms");
+      const allReqData = await allReqRes.json();
 
+      if (!reqData.success) throw new Error(reqData.message || "Failed to fetch requests");
+      if (!roomsData.success) throw new Error(roomsData.message || "Failed to fetch global rooms");
+      if (!allReqData.success) throw new Error(allReqData.message || "Failed to fetch all requests");
+
+      setRequests(reqData.data);
       setRooms(roomsData.data);
+      setAllRequests(allReqData.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -50,12 +52,12 @@ export const useConferenceRoomRequest = () => {
       const data = await response.json();
       if (!data.success) throw new Error(data.message || "Failed to submit request");
       
-      await fetchInitialData(); // Refresh the list
+      await fetchInitialData(); // Refresh the lists
       return data;
     } catch (err) {
       throw err;
     }
   };
 
-  return { requests, rooms, isLoading, error, refresh: fetchInitialData, submitRequest };
+  return { requests, allRequests, rooms, isLoading, error, refresh: fetchInitialData, submitRequest };
 };

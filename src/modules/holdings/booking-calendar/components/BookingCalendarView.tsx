@@ -13,6 +13,10 @@ import {
   isSameDay, 
   addMonths, 
   subMonths,
+  addWeeks,
+  subWeeks,
+  addDays,
+  subDays,
   isToday
 } from "date-fns";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin, Clock, FileText, User } from "lucide-react";
@@ -23,14 +27,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useBookingCalendar } from "../hooks/useBookingCalendar";
 import { ConferenceRoomRequestInput } from "../../conference-room-request/types/conference-room-request.schema";
 
+type ViewMode = "month" | "week" | "day";
+
 export const BookingCalendarView: React.FC = () => {
   const { requests, rooms, isLoading, error } = useBookingCalendar();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [selectedRoomId, setSelectedRoomId] = useState<string>("all");
   const [selectedRequest, setSelectedRequest] = useState<ConferenceRoomRequestInput | null>(null);
 
-  const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+  const navigateNext = () => {
+    if (viewMode === "month") setCurrentDate(addMonths(currentDate, 1));
+    else if (viewMode === "week") setCurrentDate(addWeeks(currentDate, 1));
+    else setCurrentDate(addDays(currentDate, 1));
+  };
+
+  const navigatePrev = () => {
+    if (viewMode === "month") setCurrentDate(subMonths(currentDate, 1));
+    else if (viewMode === "week") setCurrentDate(subWeeks(currentDate, 1));
+    else setCurrentDate(subDays(currentDate, 1));
+  };
+
   const goToToday = () => setCurrentDate(new Date());
 
   const filteredRequests = useMemo(() => {
@@ -39,12 +56,33 @@ export const BookingCalendarView: React.FC = () => {
   }, [requests, selectedRoomId]);
 
   const daysInGrid = useMemo(() => {
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(monthStart);
-    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday start
-    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-    return eachDayOfInterval({ start: startDate, end: endDate });
-  }, [currentDate]);
+    if (viewMode === "month") {
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(monthStart);
+      const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+      const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+      return eachDayOfInterval({ start: startDate, end: endDate });
+    } else if (viewMode === "week") {
+      const startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const endDate = endOfWeek(currentDate, { weekStartsOn: 1 });
+      return eachDayOfInterval({ start: startDate, end: endDate });
+    } else {
+      return [currentDate];
+    }
+  }, [currentDate, viewMode]);
+
+  const currentDisplayDate = useMemo(() => {
+    if (viewMode === "month") return format(currentDate, "MMMM yyyy");
+    if (viewMode === "week") {
+      const start = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const end = endOfWeek(currentDate, { weekStartsOn: 1 });
+      if (isSameMonth(start, end)) {
+        return `${format(start, "MMM d")} - ${format(end, "d, yyyy")}`;
+      }
+      return `${format(start, "MMM d")} - ${format(end, "MMM d, yyyy")}`;
+    }
+    return format(currentDate, "MMMM d, yyyy");
+  }, [currentDate, viewMode]);
 
   if (isLoading) {
     return (
@@ -97,14 +135,40 @@ export const BookingCalendarView: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex bg-white/10 rounded-lg p-1 border border-white/10 text-white">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setViewMode("day")}
+                className={`h-8 px-3 text-sm font-medium ${viewMode === "day" ? "bg-white/20 text-white shadow-sm" : "text-white/70 hover:text-white"}`}
+              >
+                Day
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setViewMode("week")}
+                className={`h-8 px-3 text-sm font-medium ${viewMode === "week" ? "bg-white/20 text-white shadow-sm" : "text-white/70 hover:text-white"}`}
+              >
+                Week
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setViewMode("month")}
+                className={`h-8 px-3 text-sm font-medium ${viewMode === "month" ? "bg-white/20 text-white shadow-sm" : "text-white/70 hover:text-white"}`}
+              >
+                Month
+              </Button>
+            </div>
             <div className="flex items-center bg-white/10 rounded-lg p-1 border border-white/10">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20 hover:text-white" onClick={prevMonth}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20 hover:text-white" onClick={navigatePrev}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" className="h-8 px-3 text-white hover:bg-white/20 hover:text-white text-sm font-semibold tracking-wide" onClick={goToToday}>
-                {format(currentDate, "MMMM yyyy")}
+              <Button variant="ghost" className="h-8 px-3 text-white hover:bg-white/20 hover:text-white text-sm font-semibold tracking-wide min-w-[140px]" onClick={goToToday}>
+                {currentDisplayDate}
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20 hover:text-white" onClick={nextMonth}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20 hover:text-white" onClick={navigateNext}>
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
@@ -113,14 +177,14 @@ export const BookingCalendarView: React.FC = () => {
       </CardHeader>
 
       <CardContent className="p-0 flex-1 flex flex-col overflow-hidden bg-slate-50/50">
-        <div className="grid grid-cols-7 border-b border-slate-200 bg-white shadow-sm z-10">
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+        <div className={`grid ${viewMode === "day" ? "grid-cols-1" : "grid-cols-7"} border-b border-slate-200 bg-white shadow-sm z-10`}>
+          {(viewMode === "day" ? [format(currentDate, 'EEEE')] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']).map(day => (
             <div key={day} className="py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider border-r border-slate-100 last:border-r-0">
               {day}
             </div>
           ))}
         </div>
-        <div className="flex-1 grid grid-cols-7 grid-rows-5 bg-slate-200 gap-px">
+        <div className={`flex-1 grid ${viewMode === "day" ? "grid-cols-1" : "grid-cols-7"} ${viewMode === "month" ? "grid-rows-5" : "grid-rows-1"} bg-slate-200 gap-px`}>
           {daysInGrid.map((day, idx) => {
             const isCurrentMonth = isSameMonth(day, currentDate);
             const isDayToday = isToday(day);

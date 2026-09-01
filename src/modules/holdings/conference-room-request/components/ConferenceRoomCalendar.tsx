@@ -154,22 +154,40 @@ export const ConferenceRoomCalendar: React.FC = () => {
                       return (
                         <div 
                           key={req.id}
-                          className="absolute left-1 right-1 px-2 py-1.5 rounded-md border text-xs shadow-sm flex flex-col z-10 transition-transform hover:scale-[1.02] cursor-pointer overflow-hidden"
+                          className="absolute left-1 right-1 px-2 py-1.5 rounded-md border shadow-sm flex flex-col z-10 transition-transform hover:scale-[1.02] cursor-pointer overflow-hidden"
                           style={{
                             top: `${top + 2}px`, // +2px for padding
-                            height: `${Math.max(height - 4, 20)}px`, // -4px for padding, min 20px
+                            height: `${Math.max(height - 4, 30)}px`, // min height to fit more info
                             backgroundColor: isApproved ? '#ecfdf5' : '#fffbeb', // emerald-50 / amber-50
                             borderColor: isApproved ? '#a7f3d0' : '#fde68a', // emerald-200 / amber-200
                             color: isApproved ? '#065f46' : '#92400e', // emerald-800 / amber-800
                           }}
-                          title={`${req.title}\n${room?.name}\n${format(start, 'h:mm a')} - ${format(end, 'h:mm a')}`}
+                          title={`${req.title}\n${room?.name}\n${req.requested_by_name ? `By: ${req.requested_by_name}\n` : ''}${req.purpose ? `Purpose: ${req.purpose}\n` : ''}${format(start, 'h:mm a')} - ${format(end, 'h:mm a')}`}
                         >
-                          <span className="font-bold truncate block">{req.title}</span>
-                          <div className="flex items-center gap-1 mt-0.5 opacity-80 truncate">
-                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                          <span className="font-bold truncate block text-xs">{req.title}</span>
+                          
+                          {/* Room */}
+                          <div className="flex items-center gap-1 mt-0.5 opacity-80 truncate text-[10px]">
+                            <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
                             <span className="truncate">{room?.name || `Room #${req.room_id}`}</span>
                           </div>
-                          <div className="mt-auto text-[10px] font-medium opacity-70">
+
+                          {/* Requestor */}
+                          {req.requested_by_name && (
+                            <div className="text-[10px] opacity-80 mt-0.5 truncate font-medium">
+                              {req.requested_by_name}
+                            </div>
+                          )}
+
+                          {/* Description / Purpose */}
+                          {req.purpose && (
+                            <div className="text-[10px] opacity-70 mt-0.5 line-clamp-2 leading-tight">
+                              {req.purpose}
+                            </div>
+                          )}
+
+                          {/* Time */}
+                          <div className="mt-auto text-[9px] font-medium opacity-70 pt-1">
                             {format(start, 'h:mm a')} - {format(end, 'h:mm a')}
                           </div>
                         </div>

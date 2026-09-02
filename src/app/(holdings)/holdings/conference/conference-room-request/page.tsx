@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { ConferenceRoomRequestProvider } from "@/modules/holdings/conference-room-request/providers/ConferenceRoomRequestProvider";
-import { ConferenceRoomRequestTable } from "@/modules/holdings/conference-room-request/components/ConferenceRoomRequestTable";
-import { ConferenceRoomRequestForm } from "@/modules/holdings/conference-room-request/components/ConferenceRoomRequestForm";
+import { ConferenceRoomRequestProvider } from "@/modules/holdings/conference/conference-room-request/providers/ConferenceRoomRequestProvider";
+import { ConferenceRoomRequestTable } from "@/modules/holdings/conference/conference-room-request/components/ConferenceRoomRequestTable";
+import { ConferenceRoomRequestForm } from "@/modules/holdings/conference/conference-room-request/components/ConferenceRoomRequestForm";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PlusCircle } from "lucide-react";
 
-import { ConferenceRoomCalendar } from "@/modules/holdings/conference-room-request/components/ConferenceRoomCalendar";
+import { ConferenceRoomCalendar } from "@/modules/holdings/conference/conference-room-request/components/ConferenceRoomCalendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar as CalendarIcon, List } from "lucide-react";
 

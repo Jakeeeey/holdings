@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchGlobalConferenceRooms } from "@/modules/holdings/conference-room-request/services/conference-room-request.service";
+import { fetchGlobalConferenceRooms } from "@/modules/holdings/conference/conference-room-request/services/conference-room-request.service";
 
 export async function GET() {
   try {

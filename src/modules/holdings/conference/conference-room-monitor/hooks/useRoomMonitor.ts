@@ -20,7 +20,7 @@ export const useRoomMonitor = (roomId: number) => {
       setError(null);
       
       // Fetch rooms
-      const roomsRes = await fetch('/api/holdings/conference-rooms');
+      const roomsRes = await fetch('/api/holdings/conference/conference-rooms');
       if (!roomsRes.ok) throw new Error("Failed to fetch rooms");
       const roomsData = await roomsRes.json();
       
@@ -32,7 +32,7 @@ export const useRoomMonitor = (roomId: number) => {
       }
 
       // Fetch all requests
-      const reqRes = await fetch('/api/holdings/conference-room-requests/all');
+      const reqRes = await fetch('/api/holdings/conference/conference-room-requests/all');
       if (!reqRes.ok) throw new Error("Failed to fetch requests");
       const reqData = await reqRes.json();
       

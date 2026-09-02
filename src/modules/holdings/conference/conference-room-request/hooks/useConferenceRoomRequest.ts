@@ -15,9 +15,9 @@ export const useConferenceRoomRequest = () => {
     try {
       // Fetch the user's past/pending requests, global rooms, and all requests concurrently
       const [reqRes, roomsRes, allReqRes] = await Promise.all([
-        fetch("/api/holdings/conference-room-requests"),
-        fetch("/api/holdings/conference-room-requests/global-rooms"),
-        fetch("/api/holdings/conference-room-requests/all")
+        fetch("/api/holdings/conference/conference-room-requests"),
+        fetch("/api/holdings/conference/conference-room-requests/global-rooms"),
+        fetch("/api/holdings/conference/conference-room-requests/all")
       ]);
 
       const reqData = await reqRes.json();
@@ -44,7 +44,7 @@ export const useConferenceRoomRequest = () => {
 
   const submitRequest = async (payload: ConferenceRoomRequestInput) => {
     try {
-      const response = await fetch("/api/holdings/conference-room-requests", {
+      const response = await fetch("/api/holdings/conference/conference-room-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

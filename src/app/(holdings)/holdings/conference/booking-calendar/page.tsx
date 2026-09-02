@@ -1,5 +1,5 @@
 import { SidebarInset } from "@/components/ui/sidebar";
-import { BookingCalendarView } from "@/modules/holdings/booking-calendar/components/BookingCalendarView";
+import { BookingCalendarView } from "@/modules/holdings/conference/booking-calendar/components/BookingCalendarView";
 
 export default function BookingCalendarPage() {
   return (

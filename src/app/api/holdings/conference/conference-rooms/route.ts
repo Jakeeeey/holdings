@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchAllConferenceRooms, createConferenceRoom } from "@/modules/holdings/conference-room/services/conference-room.service";
-import { ConferenceRoomSchema } from "@/modules/holdings/conference-room/types/conference-room.schema";
+import { fetchAllConferenceRooms, createConferenceRoom } from "@/modules/holdings/conference/conference-room/services/conference-room.service";
+import { ConferenceRoomSchema } from "@/modules/holdings/conference/conference-room/types/conference-room.schema";
 
 export async function GET() {
   try {

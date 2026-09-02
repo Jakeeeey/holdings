@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Monitor } from "lucide-react";
-import { ConferenceRoom } from "@/modules/holdings/conference-room-monitor/hooks/useRoomMonitor";
+import { ConferenceRoom } from "@/modules/holdings/conference/conference-room-monitor/hooks/useRoomMonitor";
 
 export default function KioskSelectionPage() {
   const router = useRouter();
@@ -12,7 +12,7 @@ export default function KioskSelectionPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/holdings/conference-rooms')
+    fetch('/api/holdings/conference/conference-rooms')
       .then(res => res.json())
       .then(data => {
         if (data.success && Array.isArray(data.data)) {

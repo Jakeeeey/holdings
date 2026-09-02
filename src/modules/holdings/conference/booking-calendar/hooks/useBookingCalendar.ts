@@ -18,8 +18,8 @@ export const useBookingCalendar = () => {
       setError(null);
       
       const [roomsRes, reqRes] = await Promise.all([
-        fetch('/api/holdings/conference-rooms'),
-        fetch('/api/holdings/conference-room-requests/all')
+        fetch('/api/holdings/conference/conference-rooms'),
+        fetch('/api/holdings/conference/conference-room-requests/all')
       ]);
 
       if (!roomsRes.ok) throw new Error("Failed to fetch rooms");

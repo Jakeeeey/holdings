@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchConferenceRoomById, updateConferenceRoom, deleteConferenceRoom } from "@/modules/holdings/conference-room/services/conference-room.service";
-import { ConferenceRoomSchema } from "@/modules/holdings/conference-room/types/conference-room.schema";
+import { fetchConferenceRoomById, updateConferenceRoom, deleteConferenceRoom } from "@/modules/holdings/conference/conference-room/services/conference-room.service";
+import { ConferenceRoomSchema } from "@/modules/holdings/conference/conference-room/types/conference-room.schema";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {

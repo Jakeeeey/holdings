@@ -11,7 +11,7 @@ export const useConferenceRoom = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/holdings/conference-rooms");
+      const res = await fetch("/api/holdings/conference/conference-rooms");
       const result = await res.json();
       if (!res.ok) {
         throw new Error(result.message || "Failed to fetch conference rooms");
@@ -32,7 +32,7 @@ export const useConferenceRoom = () => {
 
   const addConferenceRoom = async (payload: ConferenceRoomInput) => {
     try {
-      const res = await fetch("/api/holdings/conference-rooms", {
+      const res = await fetch("/api/holdings/conference/conference-rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -52,7 +52,7 @@ export const useConferenceRoom = () => {
 
   const updateConferenceRoom = async (id: number, payload: Partial<ConferenceRoomInput>) => {
     try {
-      const res = await fetch(`/api/holdings/conference-rooms/${id}`, {
+      const res = await fetch(`/api/holdings/conference/conference-rooms/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -72,7 +72,7 @@ export const useConferenceRoom = () => {
 
   const removeConferenceRoom = async (id: number) => {
     try {
-      const res = await fetch(`/api/holdings/conference-rooms/${id}`, {
+      const res = await fetch(`/api/holdings/conference/conference-rooms/${id}`, {
         method: "DELETE",
       });
       const result = await res.json();

@@ -5,17 +5,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SPRING_API_BASE = "http://goatedcodoer:8083";
-const DIRECTUS_BASE = "http://goatedcodoer:8091";
-const DIRECTUS_TOKEN = "rTilKSsclzuQW8WfQWK1ba8wrD_LetNn";
-
-function getDirectusHeaders(): Record<string, string> {
-  const h: Record<string, string> = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  };
-  if (DIRECTUS_TOKEN) h["Authorization"] = `Bearer ${DIRECTUS_TOKEN}`;
-  return h;
-}
 
 let cachedDriverToken: { token: string; expiresAt: number } | null = null;
 

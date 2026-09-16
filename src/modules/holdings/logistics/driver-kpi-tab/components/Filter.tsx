@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Check, X } from "lucide-react";
@@ -17,15 +17,19 @@ import {
 
 export default function Filter() {
   const { filters, setFilters, drivers, loading, refresh } = useDriverKPI();
+  const [prevStart, setPrevStart] = useState(filters.startDate);
+  const [prevEnd, setPrevEnd] = useState(filters.endDate);
   const [localStart, setLocalStart] = useState<string | undefined>(
     filters.startDate,
   );
   const [localEnd, setLocalEnd] = useState<string | undefined>(filters.endDate);
 
-  useEffect(() => {
+  if (filters.startDate !== prevStart || filters.endDate !== prevEnd) {
+    setPrevStart(filters.startDate);
+    setPrevEnd(filters.endDate);
     setLocalStart(filters.startDate);
     setLocalEnd(filters.endDate);
-  }, [filters.startDate, filters.endDate]);
+  }
 
   const [driverSearch, setDriverSearch] = useState("");
 

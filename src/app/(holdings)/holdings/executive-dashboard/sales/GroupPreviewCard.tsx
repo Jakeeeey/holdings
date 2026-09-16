@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { LayoutDashboard, Trophy } from "lucide-react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,9 +39,14 @@ export function GroupPreviewCard({ group, startDate: propStartDate, endDate: pro
         const load = async () => {
             setLoading(true);
             try {
+                // Since targets are stored with monthly fiscal_period (YYYY-MM-01),
+                // query targets for the full month of the selected week range.
+                const targetStart = format(startOfMonth(parseISO(startDate)), "yyyy-MM-dd");
+                const targetEnd = format(endOfMonth(parseISO(endDate)), "yyyy-MM-dd");
+
                 const [dataRes, companyTargetsRes] = await Promise.allSettled([
                     fetchExecutiveHealthData(startDate, endDate, String(group.id)),
-                    fetchCompanyTargets(startDate, endDate, String(group.id))
+                    fetchCompanyTargets(targetStart, targetEnd, String(group.id))
                 ]);
 
                 if (dataRes.status === "fulfilled" && Array.isArray(dataRes.value)) {
@@ -53,8 +58,10 @@ export function GroupPreviewCard({ group, startDate: propStartDate, endDate: pro
                 }
 
                 if (companyTargetsRes.status === "fulfilled" && Array.isArray(companyTargetsRes.value)) {
-                    const totalTarget = companyTargetsRes.value.reduce((sum, t) => sum + (t.target_amount || 0), 0);
-                    setTarget(totalTarget);
+                    const monthlyTarget = companyTargetsRes.value.reduce((sum, t) => sum + (t.target_amount || 0), 0);
+                    // Distribute monthly target by 4 weeks for weekly basis
+                    const weeklyTarget = monthlyTarget > 0 ? monthlyTarget / 4 : 0;
+                    setTarget(weeklyTarget);
                 }
             } catch (err) {
                 console.warn(`Failed to load metrics for group ${group.id}:`, err);

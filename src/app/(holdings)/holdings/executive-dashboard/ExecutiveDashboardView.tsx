@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { format, startOfMonth, endOfMonth, parseISO, subMonths } from "date-fns";
-import { ChevronRight, LayoutDashboard, Layers, Calendar } from "lucide-react";
+import { format, startOfWeek, endOfWeek, subWeeks, addWeeks } from "date-fns";
+import { ChevronRight, ChevronLeft, LayoutDashboard, Layers, Calendar } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GroupPreviewCard } from "./sales/GroupPreviewCard";
 import { LogisticsPreviewCard } from "./logistics/LogisticsPreviewCard";
@@ -33,28 +32,26 @@ interface ContainerSection {
 
 export function ExecutiveDashboardView({ initialGroups }: { initialGroups: DashboardGroup[] }) {
     const today = new Date();
-    const currentMonthStr = format(today, "yyyy-MM");
-    const lastMonthStr = format(subMonths(today, 1), "yyyy-MM");
+    const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
 
-    const [fromMonth, setFromMonth] = useState(currentMonthStr);
-    const [toMonth, setToMonth] = useState(currentMonthStr);
+    // Compute exact weekly boundaries (Monday to Sunday)
+    const { startDate, endDate, startLabel, endLabel, weekNumber, isCurrentWeek, isLastWeek } = useMemo(() => {
+        const start = startOfWeek(currentDate, { weekStartsOn: 1 });
+        const end = endOfWeek(currentDate, { weekStartsOn: 1 });
+        
+        const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+        const lastWeekStart = startOfWeek(subWeeks(today, 1), { weekStartsOn: 1 });
 
-    // Compute exact start and end date strings (YYYY-MM-DD)
-    const { startDate, endDate } = useMemo(() => {
-        try {
-            const start = format(startOfMonth(parseISO(`${fromMonth}-01`)), "yyyy-MM-dd");
-            const end = format(endOfMonth(parseISO(`${toMonth}-01`)), "yyyy-MM-dd");
-            if (start > end) {
-                return { startDate: end, endDate: start };
-            }
-            return { startDate: start, endDate: end };
-        } catch {
-            return {
-                startDate: format(startOfMonth(today), "yyyy-MM-dd"),
-                endDate: format(endOfMonth(today), "yyyy-MM-dd")
-            };
-        }
-    }, [fromMonth, toMonth]);
+        return {
+            startDate: format(start, "yyyy-MM-dd"),
+            endDate: format(end, "yyyy-MM-dd"),
+            startLabel: format(start, "MMM d"),
+            endLabel: format(end, "MMM d, yyyy"),
+            weekNumber: format(currentDate, "w"),
+            isCurrentWeek: format(start, "yyyy-MM-dd") === format(thisWeekStart, "yyyy-MM-dd"),
+            isLastWeek: format(start, "yyyy-MM-dd") === format(lastWeekStart, "yyyy-MM-dd"),
+        };
+    }, [currentDate]);
 
     // Group the APIs based on the dashboard container
     const containerSections = useMemo(() => {
@@ -94,7 +91,7 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-6 md:p-10 text-foreground">
                 <div className="max-w-7xl mx-auto space-y-10">
                     
-                    {/* --- HEADER WITH DATE FILTER --- */}
+                    {/* --- HEADER WITH WEEKLY DATE FILTER --- */}
                     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2">
                         <div className="space-y-2">
                             <div className="flex items-center gap-2 text-muted-foreground/60 mb-1 text-[10px] uppercase font-black tracking-[0.2em]">
@@ -109,52 +106,59 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                             </p>
                         </div>
 
-                        {/* DATE RANGE FILTER */}
-                        <div className="flex flex-wrap items-center gap-2.5 bg-card/60 backdrop-blur-md border border-border/40 rounded-2xl p-2 shadow-xl">
+                        {/* WEEKLY DATE FILTER CONTROLS */}
+                        <div className="flex flex-wrap items-center gap-2 bg-card/60 backdrop-blur-md border border-border/40 rounded-2xl p-2 shadow-xl">
                             {/* Preset Buttons */}
                             <div className="flex items-center gap-1 border-r border-border/40 pr-2">
                                 <Button
-                                    variant={fromMonth === currentMonthStr && toMonth === currentMonthStr ? "default" : "ghost"}
+                                    variant={isCurrentWeek ? "default" : "ghost"}
                                     size="sm"
-                                    onClick={() => {
-                                        setFromMonth(currentMonthStr);
-                                        setToMonth(currentMonthStr);
-                                    }}
+                                    onClick={() => setCurrentDate(new Date())}
                                     className="h-7 text-[10px] font-black uppercase tracking-wider px-2.5"
                                 >
-                                    This Month
+                                    This Week
                                 </Button>
                                 <Button
-                                    variant={fromMonth === lastMonthStr && toMonth === lastMonthStr ? "default" : "ghost"}
+                                    variant={isLastWeek ? "default" : "ghost"}
                                     size="sm"
-                                    onClick={() => {
-                                        setFromMonth(lastMonthStr);
-                                        setToMonth(lastMonthStr);
-                                    }}
+                                    onClick={() => setCurrentDate(subWeeks(new Date(), 1))}
                                     className="h-7 text-[10px] font-black uppercase tracking-wider px-2.5"
                                 >
-                                    Last Month
+                                    Last Week
                                 </Button>
                             </div>
 
-                            {/* Month Inputs */}
-                            <div className="flex items-center gap-2 px-2 py-0.5">
-                                <Calendar className="h-4 w-4 text-primary" />
-                                <div className="flex items-center gap-1.5">
-                                    <Input 
-                                        type="month" 
-                                        value={fromMonth} 
-                                        onChange={(e) => setFromMonth(e.target.value)} 
-                                        className="w-[125px] border-none bg-transparent h-7 text-[11px] font-black uppercase focus-visible:ring-0 cursor-pointer p-0" 
-                                    />
-                                    <span className="text-muted-foreground/40 font-black">/</span>
-                                    <Input 
-                                        type="month" 
-                                        value={toMonth} 
-                                        onChange={(e) => setToMonth(e.target.value)} 
-                                        className="w-[125px] border-none bg-transparent h-7 text-[11px] font-black uppercase focus-visible:ring-0 cursor-pointer p-0" 
-                                    />
+                            {/* Week Stepper */}
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setCurrentDate((prev) => subWeeks(prev, 1))}
+                                    className="h-7 w-7 rounded-lg"
+                                    title="Previous Week"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+
+                                <div className="flex items-center gap-2 px-2">
+                                    <Calendar className="h-4 w-4 text-primary" />
+                                    <span className="text-[11px] font-black uppercase tracking-wider text-foreground whitespace-nowrap">
+                                        {startLabel} – {endLabel}
+                                    </span>
+                                    <Badge variant="outline" className="text-[9px] font-black tracking-wider px-1.5 py-0 border-primary/30 text-primary bg-primary/5">
+                                        W{weekNumber}
+                                    </Badge>
                                 </div>
+
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setCurrentDate((prev) => addWeeks(prev, 1))}
+                                    className="h-7 w-7 rounded-lg"
+                                    title="Next Week"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
                             </div>
                         </div>
                     </div>

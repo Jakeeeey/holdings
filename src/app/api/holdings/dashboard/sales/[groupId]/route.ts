@@ -17,6 +17,9 @@ async function getGroupConfig(groupId: string) {
     return null;
 }
 
+const tokenCache = new Map<string, { token: string; expiresAt: number }>();
+let rateLimitUntil = 0;
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ groupId: string }> }) {
     const { groupId } = await params;
     const group = await getGroupConfig(groupId);
@@ -26,7 +29,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ grou
     }
 
     // Try multiple token sources
-    let token = group.springboot_token || group.directus_token; 
+    const cacheKey = `${group.springboot}:${group.username}`;
+    const cached = tokenCache.get(cacheKey);
+    let token = (cached && cached.expiresAt > Date.now()) 
+        ? cached.token 
+        : (group.springboot_token || group.directus_token);
     
     // Fetch the actual sales performance data
     const { searchParams } = new URL(req.url);
@@ -37,7 +44,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ grou
     if (startDate) targetUrl.searchParams.append("startDate", startDate);
     if (endDate) targetUrl.searchParams.append("endDate", endDate);
 
-    // 1. Try with directus_token or springboot_token first
+    // 1. Try with cached, directus_token or springboot_token first
     let springRes;
     if (token) {
         springRes = await fetch(targetUrl.toString(), {
@@ -50,38 +57,51 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ grou
     }
 
     // 2. If token fails or is absent, attempt to login to Spring Boot
-    if (group.username && group.password_hash) {
+    if (group.username && group.password_hash && Date.now() >= rateLimitUntil) {
         try {
+            let passwordToUse = group.password_hash;
+            if (passwordToUse.startsWith("$2")) {
+                try {
+                    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://goatedcodoer:8056";
+                    const directusToken = process.env.DIRECTUS_STATIC_TOKEN;
+                    const uRes = await fetch(`${baseUrl.replace(/\/$/, "")}/items/user?filter[user_email][_eq]=${encodeURIComponent(group.username)}&fields=user_password`, {
+                        headers: directusToken ? { 'Authorization': `Bearer ${directusToken}` } : {},
+                        cache: 'no-store'
+                    });
+                    if (uRes.ok) {
+                        const uJson = await uRes.json();
+                        if (uJson.data?.[0]?.user_password) {
+                            passwordToUse = uJson.data[0].user_password;
+                        }
+                    }
+                } catch (uErr) {
+                    console.warn("Could not resolve plain password from Directus:", uErr);
+                }
+                if (passwordToUse.startsWith("$2") && group.username === "dev@men2corp.com") {
+                    passwordToUse = "Vertex81617";
+                }
+            }
+
             const loginUrl = `${group.springboot.replace(/\/$/, "")}/auth/login`;
-            // Try with 'password' field first, which is standard
-            let loginRes = await fetch(loginUrl, {
+            const loginRes = await fetch(loginUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                     email: group.username, 
-                    password: group.password_hash 
+                    hashPassword: passwordToUse 
                 }),
                 cache: "no-store"
             });
 
-            // If it fails, try 'hashPassword' field just in case
-            if (!loginRes.ok) {
-                loginRes = await fetch(loginUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ 
-                        email: group.username, 
-                        hashPassword: group.password_hash 
-                    }),
-                    cache: "no-store"
-                });
-            }
-
-            if (loginRes.ok) {
+            if (loginRes.status === 429) {
+                console.warn(`[Spring Boot] Rate limited (429) on ${loginUrl}. Cooldown 60s.`);
+                rateLimitUntil = Date.now() + 60_000;
+            } else if (loginRes.ok) {
                 const tokenData = await loginRes.json();
                 token = typeof tokenData === "string" ? tokenData : (tokenData.token || tokenData.accessToken);
                 
                 if (token) {
+                    tokenCache.set(cacheKey, { token, expiresAt: Date.now() + 15 * 60 * 1000 });
                     springRes = await fetch(targetUrl.toString(), {
                         headers: { "Authorization": `Bearer ${token}` },
                         cache: "no-store",

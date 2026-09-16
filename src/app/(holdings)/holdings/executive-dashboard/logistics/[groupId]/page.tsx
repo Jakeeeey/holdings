@@ -76,9 +76,15 @@ function buildHeaderUserFromToken(token: string | null | undefined) {
   };
 }
 
-export default async function Page() {
+export default async function Page(props: {
+  params: Promise<{ groupId: string }>;
+  searchParams: Promise<{ startDate?: string; endDate?: string }>;
+}) {
   // ✅ Next.js 16: cookies() is async
-  const cookieStore = await cookies();
+  const [cookieStore, searchParams] = await Promise.all([
+    cookies(),
+    props.searchParams,
+  ]);
   const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
 
   const headerUser = buildHeaderUserFromToken(token);
@@ -128,7 +134,10 @@ export default async function Page() {
 
       {/* ✅ Only content scrolls inside RIGHT column */}
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4">
-        <DriverKPIModule />
+        <DriverKPIModule 
+          initialStartDate={searchParams?.startDate}
+          initialEndDate={searchParams?.endDate}
+        />
       </main>
     </div>
   );

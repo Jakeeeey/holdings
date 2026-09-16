@@ -21,42 +21,55 @@ function computeFulfillmentRate(
   return Math.round((fulfilled / data.length) * 100);
 }
 
-export function LogisticsPreviewCard({ group }: { group: { id: number; group_name: string; [key: string]: unknown } }) {
+interface LogisticsPreviewCardProps {
+    group: { id: number; group_name: string; [key: string]: unknown };
+    startDate?: string;
+    endDate?: string;
+}
+
+export function LogisticsPreviewCard({ group, startDate: propStartDate, endDate: propEndDate }: LogisticsPreviewCardProps) {
     const [loading, setLoading] = useState(true);
     const [avgDispatchVarianceHours, setAvgDispatchVarianceHours] = useState(0);
     const [avgArrivalVarianceHours, setAvgArrivalVarianceHours] = useState(0);
     const [totalFulfilledAmount, setTotalFulfilledAmount] = useState(0);
     const [fulfillmentRate, setFulfillmentRate] = useState(0);
+    const [syncPending, setSyncPending] = useState(false);
+
+    const today = new Date();
+    const startDate = propStartDate || format(startOfMonth(today), "yyyy-MM-dd");
+    const endDate = propEndDate || format(endOfMonth(today), "yyyy-MM-dd");
 
     useEffect(() => {
         const load = async () => {
+            setLoading(true);
             try {
-                const today = new Date();
-                const startDate = format(startOfMonth(today), "yyyy-MM-dd");
-                const endDate = format(endOfMonth(today), "yyyy-MM-dd");
-
                 const data = await fetchDriverCustomerVisits({ startDate, endDate, limit: 10000 });
-                const rows = data.rows || [];
+                const rows = data?.rows || [];
                 const kpis = calculateKPIs(rows);
                 
                 setAvgDispatchVarianceHours(kpis.avgDispatchVarianceHours);
                 setAvgArrivalVarianceHours(kpis.avgArrivalVarianceHours);
                 setTotalFulfilledAmount(kpis.totalFulfilledAmount);
                 setFulfillmentRate(computeFulfillmentRate(rows as VisitRecord[]));
+                setSyncPending(false);
             } catch (err) {
-                console.error(`Failed to load logistics metrics:`, err);
+                console.warn(`Logistics metrics pending for group ${group.id}:`, err);
+                setSyncPending(true);
             } finally {
                 setLoading(false);
             }
         };
         
         load();
-    }, [group.id]);
+    }, [group.id, startDate, endDate]);
 
     const isExcellent = fulfillmentRate >= 90;
 
     return (
-        <Link href={`/holdings/executive-dashboard/logistics/${group.id}`} className="block h-full cursor-pointer group">
+        <Link 
+            href={`/holdings/executive-dashboard/logistics/${group.id}?startDate=${startDate}&endDate=${endDate}`} 
+            className="block h-full cursor-pointer group"
+        >
             <Card className="relative overflow-hidden border-border/40 bg-card hover:border-emerald-500/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-full min-h-[260px]">
                 
                 {/* Premium Background Glows */}
@@ -73,6 +86,11 @@ export function LogisticsPreviewCard({ group }: { group: { id: number; group_nam
                         <div className="flex flex-col gap-1">
                             <CardTitle className="text-xl font-black uppercase tracking-tight italic flex items-center gap-2 text-foreground">
                                 {group.group_name || "Logistics Hub"}
+                                {syncPending && (
+                                    <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-wider text-amber-500 border-amber-500/30 bg-amber-500/5">
+                                        Sync Pending
+                                    </Badge>
+                                )}
                             </CardTitle>
                             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                                 <Activity className="w-3 h-3 text-emerald-500" />

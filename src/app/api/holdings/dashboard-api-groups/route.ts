@@ -6,21 +6,63 @@ export async function GET(request: Request) {
     const category = searchParams.get("category");
 
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://goatedcodoer:8056";
-    // Attempt to fetch from Directus
+    const token = process.env.DIRECTUS_STATIC_TOKEN;
+
     const fetchUrl = category 
-      ? `${baseUrl.replace(/\/$/, "")}/items/dashboard_api?filter[category][_eq]=${category}`
+      ? `${baseUrl.replace(/\/$/, "")}/items/dashboard_api?filter[category][_eq]=${encodeURIComponent(category)}`
       : `${baseUrl.replace(/\/$/, "")}/items/dashboard_api`;
-      
-    const res = await fetch(fetchUrl, {
-      headers: {
-        'Authorization': `Bearer ${process.env.DIRECTUS_STATIC_TOKEN}`
+
+    // Fetch dashboard_api and dashboard_container in parallel
+    const [apiRes, containerRes] = await Promise.allSettled([
+      fetch(fetchUrl, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        cache: 'no-store'
+      }),
+      fetch(`${baseUrl.replace(/\/$/, "")}/items/dashboard_container`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        cache: 'no-store'
+      })
+    ]);
+
+    let containers: Array<{ id: number | string; name: string; description?: string | null }> = [];
+    if (containerRes.status === "fulfilled" && containerRes.value.ok) {
+      try {
+        const cJson = await containerRes.value.json();
+        containers = cJson.data || [];
+      } catch (e) {
+        console.warn("Could not parse dashboard_container json:", e);
       }
+    }
+
+    const containerMap = new Map<number | string, { id: number | string; name: string; description?: string | null }>();
+    containers.forEach((c) => {
+      containerMap.set(String(c.id), c);
+      containerMap.set(Number(c.id), c);
     });
 
-    if (res.ok) {
-      const json = await res.json();
+    if (apiRes.status === "fulfilled" && apiRes.value.ok) {
+      const json = await apiRes.value.json();
       if (json.data && json.data.length > 0) {
-        return NextResponse.json(json.data);
+        const enriched = json.data.map((item: { container_id?: unknown; [key: string]: unknown }) => {
+          let containerObj = null;
+          if (item.container_id && typeof item.container_id === "object") {
+            containerObj = item.container_id;
+          } else if (item.container_id !== null && item.container_id !== undefined) {
+            const match = containerMap.get(String(item.container_id)) || containerMap.get(Number(item.container_id));
+            containerObj = match || {
+              id: item.container_id,
+              name: `Container ${item.container_id}`,
+              description: null
+            };
+          }
+
+          return {
+            ...item,
+            container: containerObj
+          };
+        });
+
+        return NextResponse.json(enriched);
       }
     }
 
@@ -32,7 +74,13 @@ export async function GET(request: Request) {
         group_name: "Men2 Marketing",
         directus: "http://goatedcodoer:8091/",
         directus_token: "rTilKSsclzuQW8WfQWK1ba8wrD_LetNn",
-        springboot: "http://goatedcodoer:8083/"
+        springboot: "http://goatedcodoer:8083/",
+        container_id: 1,
+        container: {
+          id: 1,
+          name: "Main Operations",
+          description: "Primary distribution and logistics operations"
+        }
       }
     ]);
   } catch (error) {
@@ -44,7 +92,13 @@ export async function GET(request: Request) {
         group_name: "Men2 Marketing",
         directus: "http://goatedcodoer:8091/",
         directus_token: "rTilKSsclzuQW8WfQWK1ba8wrD_LetNn",
-        springboot: "http://goatedcodoer:8083/"
+        springboot: "http://goatedcodoer:8083/",
+        container_id: 1,
+        container: {
+          id: 1,
+          name: "Main Operations",
+          description: "Primary distribution and logistics operations"
+        }
       }
     ]);
   }

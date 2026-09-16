@@ -19,50 +19,62 @@ const formatShort = (val: number) => {
     return `${sign}₱${absVal.toFixed(0)}`;
 };
 
-export function GroupPreviewCard({ group }: { group: { id: number; group_name: string; [key: string]: unknown } }) {
+interface GroupPreviewCardProps {
+    group: { id: number; group_name: string; [key: string]: unknown };
+    startDate?: string;
+    endDate?: string;
+}
+
+export function GroupPreviewCard({ group, startDate: propStartDate, endDate: propEndDate }: GroupPreviewCardProps) {
     const [loading, setLoading] = useState(true);
     const [sales, setSales] = useState(0);
     const [target, setTarget] = useState(0);
+    const [syncPending, setSyncPending] = useState(false);
+
+    const today = new Date();
+    const startDate = propStartDate || format(startOfMonth(today), "yyyy-MM-dd");
+    const endDate = propEndDate || format(endOfMonth(today), "yyyy-MM-dd");
 
     useEffect(() => {
         const load = async () => {
+            setLoading(true);
             try {
-                const today = new Date();
-                const startDate = format(startOfMonth(today), "yyyy-MM-dd");
-                const endDate = format(endOfMonth(today), "yyyy-MM-dd");
-
-                const [data, companyTargets] = await Promise.all([
+                const [dataRes, companyTargetsRes] = await Promise.allSettled([
                     fetchExecutiveHealthData(startDate, endDate, String(group.id)),
                     fetchCompanyTargets(startDate, endDate, String(group.id))
                 ]);
 
-                let totalSales = 0;
-                if (Array.isArray(data)) {
-                    totalSales = data.reduce((sum, item) => sum + (item.netAmount || 0), 0);
+                if (dataRes.status === "fulfilled" && Array.isArray(dataRes.value)) {
+                    const totalSales = dataRes.value.reduce((sum, item) => sum + (item.netAmount || 0), 0);
+                    setSales(totalSales);
+                    setSyncPending(false);
+                } else {
+                    setSyncPending(true);
                 }
 
-                let totalTarget = 0;
-                if (Array.isArray(companyTargets)) {
-                    totalTarget = companyTargets.reduce((sum, t) => sum + (t.target_amount || 0), 0);
+                if (companyTargetsRes.status === "fulfilled" && Array.isArray(companyTargetsRes.value)) {
+                    const totalTarget = companyTargetsRes.value.reduce((sum, t) => sum + (t.target_amount || 0), 0);
+                    setTarget(totalTarget);
                 }
-
-                setSales(totalSales);
-                setTarget(totalTarget);
             } catch (err) {
-                console.error(`Failed to load metrics for group ${group.id}:`, err);
+                console.warn(`Failed to load metrics for group ${group.id}:`, err);
+                setSyncPending(true);
             } finally {
                 setLoading(false);
             }
         };
         
         load();
-    }, [group.id]);
+    }, [group.id, startDate, endDate]);
 
     const achievement = target > 0 ? (sales / target) * 100 : 0;
     const isAchieved = achievement >= 100;
 
     return (
-        <Link href={`/holdings/executive-dashboard/sales/${group.id}/executive-health`} className="block h-full cursor-pointer">
+        <Link 
+            href={`/holdings/executive-dashboard/sales/${group.id}/executive-health?from=${startDate.slice(0, 7)}&to=${endDate.slice(0, 7)}`} 
+            className="block h-full cursor-pointer"
+        >
             <Card className="relative overflow-hidden border-border/40 bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-full min-h-[220px] group">
             {/* Decorative background icon */}
                 <div className="absolute -right-6 -top-6 opacity-[0.02] group-hover:opacity-[0.08] transition-opacity">
@@ -70,10 +82,17 @@ export function GroupPreviewCard({ group }: { group: { id: number; group_name: s
                 </div>
                 
                 <CardHeader className="border-b border-border/40 bg-muted/5 pb-4 relative z-10">
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="text-xl font-black uppercase tracking-tight italic">
-                            {group.group_name || "Unknown Group"}
-                        </CardTitle>
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <CardTitle className="text-xl font-black uppercase tracking-tight italic">
+                                {group.group_name || "Unknown Group"}
+                            </CardTitle>
+                            {syncPending && (
+                                <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-wider text-amber-500 border-amber-500/30 bg-amber-500/5">
+                                    Sync Pending
+                                </Badge>
+                            )}
+                        </div>
                         <div className="p-2 bg-background rounded-xl border border-border/40 shadow-sm group-hover:bg-primary/5 transition-colors">
                             <LayoutDashboard className="h-4 w-4 text-primary opacity-80" />
                         </div>

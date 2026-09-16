@@ -11,6 +11,7 @@ import { GroupPreviewCard } from "./sales/GroupPreviewCard";
 import { ProductSalesPreviewCard } from "./sales/ProductSalesPreviewCard";
 import { SalesByTerritoryPreviewCard } from "./sales/SalesByTerritoryPreviewCard";
 import { CustomerSalesPreviewCard } from "./sales/CustomerSalesPreviewCard";
+import { AgingSlobPreviewCard } from "./sales/AgingSlobPreviewCard";
 import { LogisticsPreviewCard } from "./logistics/LogisticsPreviewCard";
 
 export interface DashboardGroup {
@@ -230,6 +231,14 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                                 group={group} 
                                                 startDate={startDate} 
                                                 endDate={endDate} 
+                                            />
+                                        );
+                                    }
+                                    if (cat === "aging-and-slob" || cat === "slob-aging" || cat === "aging-slob" || cat === "stock-health-monitor") {
+                                        return (
+                                            <AgingSlobPreviewCard 
+                                                key={group.id} 
+                                                group={group} 
                                             />
                                         );
                                     }

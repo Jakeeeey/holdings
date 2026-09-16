@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Trophy } from "lucide-react";
+import { LayoutDashboard, Trophy, ChevronRight } from "lucide-react";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -80,9 +80,9 @@ export function GroupPreviewCard({ group, startDate: propStartDate, endDate: pro
     return (
         <Link 
             href={`/holdings/executive-dashboard/sales/${group.id}/executive-health?from=${startDate.slice(0, 7)}&to=${endDate.slice(0, 7)}`} 
-            className="block h-full cursor-pointer"
+            className="block cursor-pointer group"
         >
-            <Card className="relative overflow-hidden border-border/40 bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-full min-h-[220px] group">
+            <Card className="relative overflow-hidden border-border/40 bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-300 flex flex-col min-h-[250px] group">
             {/* Decorative background icon */}
                 <div className="absolute -right-6 -top-6 opacity-[0.02] group-hover:opacity-[0.08] transition-opacity">
                     <Trophy className="h-40 w-40 rotate-12" />
@@ -106,7 +106,7 @@ export function GroupPreviewCard({ group, startDate: propStartDate, endDate: pro
                     </div>
                 </CardHeader>
                 
-                <CardContent className="flex-1 p-6 flex flex-col gap-6 relative z-10 justify-center">
+                <CardContent className="flex-1 p-6 flex flex-col justify-between gap-4 relative z-10">
                     {loading ? (
                         <div className="space-y-4">
                             <div className="flex justify-between items-start">
@@ -164,10 +164,13 @@ export function GroupPreviewCard({ group, startDate: propStartDate, endDate: pro
                                     </div>
                                 </div>
                             </div>
-                            
-
                         </div>
                     )}
+
+                    <div className="pt-2 border-t border-border/30 flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-muted-foreground/70 group-hover:text-primary transition-colors">
+                        <span>View Executive Health &amp; Quotas</span>
+                        <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
                 </CardContent>
             </Card>
         </Link>

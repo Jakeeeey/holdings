@@ -188,7 +188,7 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                 </Badge>
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
                                 {section.groups.map((group) => {
                                     const cat = (group.category || "").toLowerCase();
                                     if (cat === "distribution-sales" || cat === "sales") {

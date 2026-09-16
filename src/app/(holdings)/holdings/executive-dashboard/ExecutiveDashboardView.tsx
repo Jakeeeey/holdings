@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { GroupPreviewCard } from "./sales/GroupPreviewCard";
 import { ProductSalesPreviewCard } from "./sales/ProductSalesPreviewCard";
 import { SalesByTerritoryPreviewCard } from "./sales/SalesByTerritoryPreviewCard";
+import { CustomerSalesPreviewCard } from "./sales/CustomerSalesPreviewCard";
 import { LogisticsPreviewCard } from "./logistics/LogisticsPreviewCard";
 
 export interface DashboardGroup {
@@ -215,6 +216,16 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     if (cat === "sales-by-territory" || cat === "sales-by-area" || cat === "area") {
                                         return (
                                             <SalesByTerritoryPreviewCard 
+                                                key={group.id} 
+                                                group={group} 
+                                                startDate={startDate} 
+                                                endDate={endDate} 
+                                            />
+                                        );
+                                    }
+                                    if (cat === "sales-by-customer" || cat === "customer-sales" || cat === "sales-by-customers") {
+                                        return (
+                                            <CustomerSalesPreviewCard 
                                                 key={group.id} 
                                                 group={group} 
                                                 startDate={startDate} 

@@ -31,11 +31,11 @@ interface ContainerSection {
 }
 
 export function ExecutiveDashboardView({ initialGroups }: { initialGroups: DashboardGroup[] }) {
-    const today = new Date();
     const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
 
     // Compute exact weekly boundaries (Monday to Sunday)
     const { startDate, endDate, startLabel, endLabel, weekNumber, isCurrentWeek, isLastWeek } = useMemo(() => {
+        const today = new Date();
         const start = startOfWeek(currentDate, { weekStartsOn: 1 });
         const end = endOfWeek(currentDate, { weekStartsOn: 1 });
         

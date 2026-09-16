@@ -31,10 +31,26 @@ type ContextValue = {
 
 const DriverKPIContext = createContext<ContextValue | undefined>(undefined);
 
-export const DriverKPIProvider: React.FC<React.PropsWithChildren<object>> = ({
+interface DriverKPIProviderProps {
+  initialStartDate?: string;
+  initialEndDate?: string;
+  children?: React.ReactNode;
+}
+
+export const DriverKPIProvider: React.FC<DriverKPIProviderProps> = ({
+  initialStartDate,
+  initialEndDate,
   children,
 }) => {
   const [filters, setFiltersState] = useState<Filters>(() => {
+    if (initialStartDate && initialEndDate) {
+      return {
+        startDate: initialStartDate,
+        endDate: initialEndDate,
+        driverNames: [],
+      };
+    }
+
     // default to this calendar month
     const now = new Date();
 
@@ -78,6 +94,21 @@ export const DriverKPIProvider: React.FC<React.PropsWithChildren<object>> = ({
       .then((res) => setDrivers(res || []))
       .catch(() => setDrivers([]));
   }, []);
+
+  useEffect(() => {
+    if (initialStartDate && initialEndDate) {
+      setFiltersState((prev) => {
+        if (prev.startDate === initialStartDate && prev.endDate === initialEndDate) {
+          return prev;
+        }
+        return {
+          ...prev,
+          startDate: initialStartDate,
+          endDate: initialEndDate,
+        };
+      });
+    }
+  }, [initialStartDate, initialEndDate]);
 
   const computePrevRange = useCallback((start?: string, end?: string) => {
     if (!start || !end) return null;

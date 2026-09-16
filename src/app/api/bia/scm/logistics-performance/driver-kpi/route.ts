@@ -19,37 +19,41 @@ function getDirectusHeaders(): Record<string, string> {
 
 let cachedDriverToken: { token: string; expiresAt: number } | null = null;
 
+async function getSystemToken(forceFresh = false): Promise<string | null> {
+  if (!forceFresh && cachedDriverToken && cachedDriverToken.expiresAt > Date.now()) {
+    return cachedDriverToken.token;
+  }
+  try {
+    const loginRes = await fetch(`${SPRING_API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "dev@men2corp.com", hashPassword: "Vertex81617" }),
+      cache: "no-store",
+    });
+    if (loginRes.ok) {
+      const tokenData = await loginRes.json();
+      const acquired = typeof tokenData === "string" ? tokenData : (tokenData.token || tokenData.accessToken);
+      if (acquired) {
+        cachedDriverToken = { token: acquired, expiresAt: Date.now() + 15 * 60 * 1000 };
+        return acquired;
+      }
+    }
+  } catch (e) {
+    console.warn("Could not obtain system token for driver-kpi:", e);
+  }
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   try {
-    let token =
+    let token: string | null | undefined =
       req.headers.get("authorization")?.replace("Bearer ", "") ||
       req.cookies.get("vos_access_token")?.value;
 
     const { searchParams } = new URL(req.url);
 
     if (!token) {
-      if (cachedDriverToken && cachedDriverToken.expiresAt > Date.now()) {
-        token = cachedDriverToken.token;
-      } else {
-        try {
-          const loginRes = await fetch(`${SPRING_API_BASE}/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: "dev@men2corp.com", hashPassword: "Vertex81617" }),
-            cache: "no-store",
-          });
-          if (loginRes.ok) {
-            const tokenData = await loginRes.json();
-            const acquired = typeof tokenData === "string" ? tokenData : (tokenData.token || tokenData.accessToken);
-            if (acquired) {
-              token = acquired;
-              cachedDriverToken = { token: acquired, expiresAt: Date.now() + 15 * 60 * 1000 };
-            }
-          }
-        } catch (e) {
-          console.warn("Could not obtain fallback token for driver-kpi:", e);
-        }
-      }
+      token = await getSystemToken();
     }
 
     if (!token) {
@@ -74,6 +78,29 @@ export async function GET(req: NextRequest) {
     );
     const driverNames = searchParams.getAll("driverNames");
 
+    async function doFetch(targetUrl: string, authToken: string) {
+      let res = await fetch(targetUrl, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      });
+      if (res.status === 401) {
+        const freshToken = await getSystemToken(true);
+        if (freshToken && freshToken !== authToken) {
+          res = await fetch(targetUrl, {
+            headers: {
+              Authorization: `Bearer ${freshToken}`,
+              "Content-Type": "application/json",
+            },
+            cache: "no-store",
+          });
+        }
+      }
+      return res;
+    }
+
     // If multiple driver names were provided, the upstream view cannot
     // accept multiple `driverNames` entries in a single request. Make one
     // request per driver and combine the results server-side to return a
@@ -86,13 +113,7 @@ export async function GET(req: NextRequest) {
         if (startDate) u.searchParams.append("startDate", startDate);
         if (endDate) u.searchParams.append("endDate", endDate);
         u.searchParams.append("driverNames", n);
-        return fetch(u.toString(), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          cache: "no-store",
-        })
+        return doFetch(u.toString(), token!)
           .then(async (res) => {
             const text = await res.text().catch(() => "");
             if (!res.ok) {
@@ -139,13 +160,7 @@ export async function GET(req: NextRequest) {
       url.searchParams.append("driverNames", driverNames[0]);
     }
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
+    const response = await doFetch(url.toString(), token!);
 
     // Read as text first so non-JSON responses (HTML errors, empty body) don't throw
     const text = await response.text();

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Check, X } from "lucide-react";
@@ -21,6 +21,12 @@ export default function Filter() {
     filters.startDate,
   );
   const [localEnd, setLocalEnd] = useState<string | undefined>(filters.endDate);
+
+  useEffect(() => {
+    setLocalStart(filters.startDate);
+    setLocalEnd(filters.endDate);
+  }, [filters.startDate, filters.endDate]);
+
   const [driverSearch, setDriverSearch] = useState("");
 
   // group drivers by full name (dedupe duplicates by normalized label)

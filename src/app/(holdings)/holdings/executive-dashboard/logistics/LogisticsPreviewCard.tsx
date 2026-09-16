@@ -94,7 +94,7 @@ export function LogisticsPreviewCard({ group, startDate: propStartDate, endDate:
                             </CardTitle>
                             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                                 <Activity className="w-3 h-3 text-emerald-500" />
-                                Live Performance
+                                Weekly Performance
                             </span>
                         </div>
                         <div className="p-2.5 bg-background rounded-xl border border-border/40 shadow-sm group-hover:bg-emerald-500/10 group-hover:border-emerald-500/30 transition-all duration-300">

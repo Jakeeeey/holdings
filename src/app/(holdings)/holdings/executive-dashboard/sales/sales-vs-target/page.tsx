@@ -3,13 +3,13 @@ import { ChevronRight } from "lucide-react";
 
 import { GroupPreviewCard } from "../GroupPreviewCard";
 
+import { fetchDashboardGroups } from "@/lib/dashboard-groups";
+
 async function getSalesGroups() {
     try {
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-        const res = await fetch(`${baseUrl}/api/holdings/dashboard-api-groups?category=distribution-sales`, { cache: 'no-store' });
-        if (res.ok) {
-            return await res.json();
-        }
+        const groups = await fetchDashboardGroups("distribution-sales");
+        const filtered = groups.filter((g) => g.category === "distribution-sales");
+        if (filtered.length > 0) return filtered;
     } catch (e) {
         console.error(e);
     }

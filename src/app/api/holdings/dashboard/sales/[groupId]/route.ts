@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchDashboardGroups } from "@/lib/dashboard-groups";
 
 export const runtime = "nodejs";
 
 // Helper to get group config
 async function getGroupConfig(groupId: string) {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     try {
-        const res = await fetch(`${baseUrl}/api/holdings/dashboard-api-groups`);
-        if (res.ok) {
-            const groups = await res.json();
-            return groups.find((g: { id: string | number, [key: string]: unknown }) => String(g.id) === groupId) || groups[0];
-        }
+        const groups = await fetchDashboardGroups();
+        return groups.find((g: { id: string | number, [key: string]: unknown }) => String(g.id) === groupId) || groups[0];
     } catch (e) {
         console.error("Failed to fetch dashboard api groups", e);
     }

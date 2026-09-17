@@ -3,14 +3,13 @@ import { ChevronRight } from "lucide-react";
 
 import { LogisticsPreviewCard } from "./LogisticsPreviewCard";
 
+import { fetchDashboardGroups } from "@/lib/dashboard-groups";
+
 async function getLogisticsGroups() {
     try {
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-        // Fetch groups with category distribution-logistics (or equivalent)
-        const res = await fetch(`${baseUrl}/api/holdings/dashboard-api-groups?category=distribution-logistics`, { cache: 'no-store' });
-        if (res.ok) {
-            return await res.json();
-        }
+        const groups = await fetchDashboardGroups();
+        const filtered = groups.filter((g) => g.category === "distribution-logistics" || g.category === "logistics-fullfillment-rate" || g.category === "logistics");
+        if (filtered.length > 0) return filtered;
     } catch (e) {
         console.error(e);
     }

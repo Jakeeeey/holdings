@@ -12,23 +12,18 @@ interface GroupItem {
   [key: string]: unknown;
 }
 
+import { fetchDashboardGroups } from "@/lib/dashboard-groups";
+
 async function getAgingSlobGroups(): Promise<GroupItem[]> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const res = await fetch(
-      `${baseUrl}/api/holdings/dashboard-api-groups?category=aging-and-slob`,
-      { cache: "no-store" },
-    );
-    if (res.ok) {
-      const groups: GroupItem[] = await res.json();
-      const filtered = groups.filter((g) => {
-        const cat = (g.category || "").toLowerCase();
-        return cat === "aging-and-slob" || cat === "slob-aging" || cat === "aging-slob" || cat === "stock-health-monitor";
-      });
-      if (filtered.length > 0) return filtered;
-      // If no specific category set yet, return sales/logistics groups as fallback
-      return groups.filter((g) => g.id === 1 || g.id === 2);
-    }
+    const groups = await fetchDashboardGroups("aging-and-slob");
+    const filtered = groups.filter((g) => {
+      const cat = (g.category || "").toLowerCase();
+      return cat === "aging-and-slob" || cat === "slob-aging" || cat === "aging-slob" || cat === "stock-health-monitor";
+    });
+    if (filtered.length > 0) return filtered;
+    // If no specific category set yet, return sales/logistics groups as fallback
+    return groups.filter((g) => g.id === 1 || g.id === 2);
   } catch (e) {
     console.error("Failed to fetch aging-and-slob groups:", e);
   }

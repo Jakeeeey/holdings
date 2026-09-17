@@ -12,17 +12,12 @@ interface GroupItem {
   [key: string]: unknown;
 }
 
+import { fetchDashboardGroups } from "@/lib/dashboard-groups";
+
 async function getCustomerSalesGroups(): Promise<GroupItem[]> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const res = await fetch(
-      `${baseUrl}/api/holdings/dashboard-api-groups?category=sales-by-customer`,
-      { cache: "no-store" },
-    );
-    if (res.ok) {
-      const groups: GroupItem[] = await res.json();
-      return groups.filter((g) => g.category === "sales-by-customer");
-    }
+    const groups = await fetchDashboardGroups("sales-by-customer");
+    return groups.filter((g) => g.category === "sales-by-customer");
   } catch (e) {
     console.error("Failed to fetch customer sales groups:", e);
   }

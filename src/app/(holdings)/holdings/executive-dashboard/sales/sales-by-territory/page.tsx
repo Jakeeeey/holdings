@@ -12,14 +12,12 @@ interface GroupItem {
     [key: string]: unknown;
 }
 
+import { fetchDashboardGroups } from "@/lib/dashboard-groups";
+
 async function getTerritorySalesGroups(): Promise<GroupItem[]> {
     try {
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-        const res = await fetch(`${baseUrl}/api/holdings/dashboard-api-groups?category=sales-by-territory`, { cache: "no-store" });
-        if (res.ok) {
-            const groups: GroupItem[] = await res.json();
-            return groups.filter((g) => g.category === "sales-by-territory");
-        }
+        const groups = await fetchDashboardGroups("sales-by-territory");
+        return groups.filter((g) => g.category === "sales-by-territory");
     } catch (e) {
         console.error("Failed to fetch territory sales groups:", e);
     }

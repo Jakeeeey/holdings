@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchDashboardGroups } from "@/lib/dashboard-groups";
 
 export const runtime = "nodejs";
 
 async function getGroupConfig(groupId: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   try {
-    const res = await fetch(`${baseUrl}/api/holdings/dashboard-api-groups`);
-    if (res.ok) {
-      const groups = await res.json();
-      return (
-        groups.find(
-          (g: { id: string | number; [key: string]: unknown }) =>
-            String(g.id) === groupId,
-        ) || groups[0]
-      );
-    }
+    const groups = await fetchDashboardGroups();
+    return (
+      groups.find(
+        (g: { id: string | number; [key: string]: unknown }) =>
+          String(g.id) === groupId,
+      ) || groups[0]
+    );
   } catch (e) {
     console.error("Failed to fetch dashboard api groups", e);
   }
@@ -230,7 +227,7 @@ async function proxy(
 
   // 2. If no valid token in cache, perform single login
   if (!token && group.username && group.password_hash) {
-    token = await performLogin(group);
+    token = await performLogin(group as Parameters<typeof performLogin>[0]);
   }
 
   // 3. Fallback to static springboot_token or vos_access_token cookie
@@ -250,7 +247,7 @@ async function proxy(
   // If token failed with 401, invalidate and re-login once
   if (upstreamRes && upstreamRes.status === 401 && group.username && group.password_hash) {
     tokenCache.delete(cacheKey);
-    const freshToken = await performLogin(group);
+    const freshToken = await performLogin(group as Parameters<typeof performLogin>[0]);
     if (freshToken) {
       upstreamRes = await attemptUpstream(freshToken);
     }

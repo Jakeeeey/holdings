@@ -30,7 +30,12 @@ async function directusFetch(path: string, options: RequestInit = {}) {
     throw new Error(`Directus API error: ${response.status} - ${error}`);
   }
 
-  return response.json();
+  if (response.status === 204) {
+    return null;
+  }
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 }
 
 export const taskService = {
@@ -158,6 +163,19 @@ export const taskService = {
   },
 
   delete: async (id: string | number): Promise<void> => {
+    try {
+      const existingRes = await directusFetch(`/items/employee_task_assignee?filter[task_id][_eq]=${id}`);
+      const existingIds = (existingRes?.data || []).map((item: any) => item.id);
+      if (existingIds.length > 0) {
+        await directusFetch(`/items/employee_task_assignee`, {
+          method: 'DELETE',
+          body: JSON.stringify(existingIds),
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to delete assignees for task", e);
+    }
+
     await directusFetch(`/items/employee_task/${id}`, {
       method: 'DELETE',
     });

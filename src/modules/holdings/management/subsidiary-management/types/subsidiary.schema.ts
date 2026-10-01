@@ -25,11 +25,13 @@ export const SubsidiarySchema = z.object({
   directus: z.string().max(255).nullable().optional(),
   springboot: z.string().max(255).nullable().optional(),
   subscription_id: z.number().nullable().optional(),
-  created_date: z.string().nullable().optional(), // Timestamp
+  created_date: z.string().nullable().optional(),
   created_by: z.string().max(255).nullable().optional(),
   status: z.string().max(255).nullable().optional(),
   directus_token: z.string().max(255).nullable().optional(),
   springboot_token: z.string().max(255).nullable().optional(),
+  is_mother_company: z.number().optional(),
+  is_default: z.number().optional(),
 });
 
 export type SubsidiaryInput = z.infer<typeof SubsidiarySchema>;

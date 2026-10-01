@@ -27,7 +27,11 @@ async function directusFetch(path: string, options: RequestInit = {}) {
     const error = await response.text();
     throw new Error(`Directus API error: ${response.status} - ${error}`);
   }
-  return response.json();
+  if (response.status === 204) {
+    return null;
+  }
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

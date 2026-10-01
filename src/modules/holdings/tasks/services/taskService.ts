@@ -30,7 +30,12 @@ async function directusFetch(path: string, options: RequestInit = {}) {
     throw new Error(`Directus API error: ${response.status} - ${error}`);
   }
 
-  return response.json();
+  if (response.status === 204) {
+    return null;
+  }
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 }
 
 export const taskService = {
@@ -116,14 +121,61 @@ export const taskService = {
   },
 
   update: async (id: string | number, data: UpdateTask): Promise<Task> => {
+    const { assignees, ...taskData } = data;
     const res = await directusFetch(`/items/employee_task/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: JSON.stringify(taskData),
     });
-    return res.data;
+    const updatedTask = res.data;
+
+    if (assignees !== undefined) {
+      try {
+        const existingRes = await directusFetch(`/items/employee_task_assignee?filter[task_id][_eq]=${id}`);
+        const existingItems = existingRes.data || [];
+        const existingIds = existingItems.map((item: any) => item.id);
+
+        if (existingIds.length > 0) {
+          await directusFetch(`/items/employee_task_assignee`, {
+            method: 'DELETE',
+            body: JSON.stringify(existingIds),
+          });
+        }
+
+        if (assignees.length > 0) {
+          const assigneePayload = assignees.map((uid) => ({
+            task_id: id,
+            user_id: uid,
+          }));
+
+          await directusFetch(`/items/employee_task_assignee`, {
+            method: 'POST',
+            body: JSON.stringify(assigneePayload),
+          });
+        }
+
+        updatedTask.assignees = assignees;
+      } catch (e) {
+        console.warn("Failed to update assignees", e);
+      }
+    }
+
+    return updatedTask;
   },
 
   delete: async (id: string | number): Promise<void> => {
+    try {
+      const existingRes = await directusFetch(`/items/employee_task_assignee?filter[task_id][_eq]=${id}`);
+      const existingIds = (existingRes?.data || []).map((item: any) => item.id);
+      if (existingIds.length > 0) {
+        await directusFetch(`/items/employee_task_assignee`, {
+          method: 'DELETE',
+          body: JSON.stringify(existingIds),
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to delete assignees for task", e);
+    }
+
     await directusFetch(`/items/employee_task/${id}`, {
       method: 'DELETE',
     });
@@ -132,7 +184,6 @@ export const taskService = {
 
 export const schedulingService = {
   fetchAllRules: async (): Promise<RecurringRule[]> => {
-    // Used by cron job to evaluate all active rules
     const res = await directusFetch(`/items/recurring_rules?filter[status][_eq]=Active`);
     return res.data;
   },
@@ -151,6 +202,5 @@ export const schedulingService = {
       body: JSON.stringify(data),
     });
     return res.data;
-  }
+  },
 };
-

@@ -208,19 +208,12 @@ async function proxy(
 
   async function attemptUpstream(token: string) {
     const authHeader = `Bearer ${token}`;
-    try {
-      return await fetch(reqUrlString, {
-        method,
-        headers: pickForwardHeaders(req, authHeader),
-        body: bodyBuffer ? bodyBuffer.slice(0) : undefined,
-        cache: "no-store",
-        // @ts-expect-error - Next.js/Node fetch supports duplex for streaming/buffers
-        duplex: "half",
-      });
-    } catch (err: unknown) {
-      console.error(`[Proxy] Upstream request failed for ${reqUrlString}:`, err);
-      return null;
-    }
+    return await fetch(reqUrlString, {
+      method,
+      headers: pickForwardHeaders(req, authHeader),
+      body: bodyBuffer ? bodyBuffer.slice(0) : undefined,
+      cache: "no-store",
+    });
   }
 
   const cacheKey = `${group.springboot}:${group.username}`;
@@ -262,15 +255,9 @@ async function proxy(
 
   // If still no response or unauthorized
   if (!upstreamRes) {
-    if (!token) {
-      return NextResponse.json(
-        { error: "Authentication failed to upstream service" },
-        { status: 401 },
-      );
-    }
     return NextResponse.json(
-      { error: "Upstream service timeout or unreachable" },
-      { status: 504 },
+      { error: "Authentication failed to upstream service" },
+      { status: 401 },
     );
   }
 

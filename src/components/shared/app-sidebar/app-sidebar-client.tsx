@@ -129,7 +129,6 @@ export function AppSidebarClient({
                                         alt="VOS Logo"
                                         width={40}
                                         height={40}
-                                        style={{ width: "auto", height: "auto" }}
                                         className="h-9 w-10 object-contain"
                                         priority
                                     />

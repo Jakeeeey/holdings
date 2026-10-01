@@ -44,12 +44,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ grou
     // 1. Try with cached, directus_token or springboot_token first
     let springRes;
     if (token) {
-        springRes = await fetch(targetUrl.toString(), {
-            headers: { "Authorization": `Bearer ${token}` },
-            cache: "no-store",
-        });
-        if (springRes.ok) {
-            return NextResponse.json(await springRes.json());
+        try {
+            springRes = await fetch(targetUrl.toString(), {
+                headers: { "Authorization": `Bearer ${token}` },
+                cache: "no-store",
+            });
+            if (springRes.ok) {
+                return NextResponse.json(await springRes.json());
+            }
+        } catch (fetchErr) {
+            console.error(`[Sales Route] Failed fetching ${targetUrl.toString()}:`, fetchErr);
         }
     }
 

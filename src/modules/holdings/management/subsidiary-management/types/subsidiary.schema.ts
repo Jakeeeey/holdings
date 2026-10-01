@@ -3,7 +3,7 @@ import { z } from "zod";
 export const SubsidiarySchema = z.object({
   company_id: z.number().optional(),
   company_name: z.string().min(1, "Company Name is required").max(255).nullable().optional(),
-  company_type_id: z.coerce.number().nullable().optional(),
+  company_type_id: z.number().nullable().optional(),
   company_code: z.string().min(1, "Company Code is required").max(255),
   company_address: z.string().max(255).nullable().optional(),
   company_brgy: z.string().max(255).nullable().optional(),
@@ -24,14 +24,14 @@ export const SubsidiarySchema = z.object({
   company_tags: z.string().max(255).nullable().optional(),
   directus: z.string().max(255).nullable().optional(),
   springboot: z.string().max(255).nullable().optional(),
-  subscription_id: z.coerce.number().nullable().optional(),
+  subscription_id: z.number().nullable().optional(),
   created_date: z.string().nullable().optional(),
   created_by: z.string().max(255).nullable().optional(),
-  status: z.string().max(255).nullable().optional().default("active"),
+  status: z.string().max(255).nullable().optional(),
   directus_token: z.string().max(255).nullable().optional(),
   springboot_token: z.string().max(255).nullable().optional(),
-  is_mother_company: z.union([z.boolean(), z.number()]).transform((val) => (val ? 1 : 0)).optional().default(0),
-  is_default: z.union([z.boolean(), z.number()]).transform((val) => (val ? 1 : 0)).optional().default(0),
+  is_mother_company: z.number().optional(),
+  is_default: z.number().optional(),
 });
 
 export type SubsidiaryInput = z.infer<typeof SubsidiarySchema>;

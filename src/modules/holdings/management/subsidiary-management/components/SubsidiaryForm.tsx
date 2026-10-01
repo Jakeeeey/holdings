@@ -148,6 +148,7 @@ export function SubsidiaryForm({ initialData, onSubmit, onCancel }: SubsidiaryFo
             <div className="flex items-center gap-4">
               <div className="size-16 rounded-xl border border-dashed flex items-center justify-center bg-white dark:bg-slate-950 overflow-hidden relative shadow-sm">
                 {currentLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={getLogoPreviewUrl(currentLogo) || ""}
                     alt="Logo Preview"

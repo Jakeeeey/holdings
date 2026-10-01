@@ -64,6 +64,7 @@ export function SubsidiaryTable({ data, onEdit, onDelete }: SubsidiaryTableProps
                   <div className="flex items-start gap-4">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 overflow-hidden">
                       {item.company_logo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={
                             item.company_logo.startsWith("http") || item.company_logo.startsWith("/")

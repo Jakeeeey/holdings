@@ -87,7 +87,7 @@ export function SubsidiaryPage() {
       />
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[750px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingData ? "Edit Subsidiary" : "Add Subsidiary"}</DialogTitle>
           </DialogHeader>

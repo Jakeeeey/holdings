@@ -3,7 +3,7 @@ import { ChevronRight } from "lucide-react";
 
 import { GroupPreviewCard } from "../GroupPreviewCard";
 
-import { fetchDashboardGroups } from "@/lib/dashboard-groups";
+import { fetchDashboardGroups } from "@/modules/holdings/executive-dashboard/services/dashboard-groups";
 
 async function getSalesGroups() {
     try {

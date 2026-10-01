@@ -12,7 +12,7 @@ interface GroupItem {
     [key: string]: unknown;
 }
 
-import { fetchDashboardGroups } from "@/lib/dashboard-groups";
+import { fetchDashboardGroups } from "@/modules/holdings/executive-dashboard/services/dashboard-groups";
 
 async function getProductSalesGroups(): Promise<GroupItem[]> {
     try {

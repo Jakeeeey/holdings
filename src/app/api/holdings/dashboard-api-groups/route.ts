@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchDashboardGroups } from "@/lib/dashboard-groups";
+import { fetchDashboardGroups } from "@/modules/holdings/executive-dashboard/services/dashboard-groups";
 
 export async function GET(request: Request) {
   try {

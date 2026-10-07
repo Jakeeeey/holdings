@@ -1,51 +1,15 @@
 import { NextResponse } from "next/server";
+import { fetchDashboardGroups } from "@/modules/holdings/executive-dashboard/services/dashboard-groups";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
-
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://goatedcodoer:8056";
-    // Attempt to fetch from Directus
-    const fetchUrl = category 
-      ? `${baseUrl.replace(/\/$/, "")}/items/dashboard_api?filter[category][_eq]=${category}`
-      : `${baseUrl.replace(/\/$/, "")}/items/dashboard_api`;
-      
-    const res = await fetch(fetchUrl, {
-      headers: {
-        'Authorization': `Bearer ${process.env.DIRECTUS_STATIC_TOKEN}`
-      }
-    });
-
-    if (res.ok) {
-      const json = await res.json();
-      if (json.data && json.data.length > 0) {
-        return NextResponse.json(json.data);
-      }
-    }
-
-    // Fallback Mock Data
-    return NextResponse.json([
-      { 
-        id: 1, 
-        category: "distribution-sales", 
-        group_name: "Men2 Marketing",
-        directus: "http://goatedcodoer:8091/",
-        directus_token: "rTilKSsclzuQW8WfQWK1ba8wrD_LetNn",
-        springboot: "http://goatedcodoer:8083/"
-      }
-    ]);
+    const data = await fetchDashboardGroups(category);
+    return NextResponse.json(data);
   } catch (error) {
-    console.error("Error fetching dashboard groups:", error);
-    return NextResponse.json([
-      { 
-        id: 1, 
-        category: "distribution-sales", 
-        group_name: "Men2 Marketing",
-        directus: "http://goatedcodoer:8091/",
-        directus_token: "rTilKSsclzuQW8WfQWK1ba8wrD_LetNn",
-        springboot: "http://goatedcodoer:8083/"
-      }
-    ]);
+    console.error("Error in dashboard-api-groups GET route:", error);
+    return NextResponse.json({ error: "Failed to fetch dashboard groups" }, { status: 500 });
   }
 }
+

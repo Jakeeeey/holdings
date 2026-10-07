@@ -62,13 +62,33 @@ export function SubsidiaryTable({ data, onEdit, onDelete }: SubsidiaryTableProps
                 
                 <TableCell className="px-6 py-4 align-middle min-w-[300px]">
                   <div className="flex items-start gap-4">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600">
-                      <Building2 className="size-5" strokeWidth={1.5} />
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 overflow-hidden">
+                      {item.company_logo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={
+                            item.company_logo.startsWith("http") || item.company_logo.startsWith("/")
+                              ? item.company_logo
+                              : `${process.env.NEXT_PUBLIC_API_BASE_URL || ""}/assets/${item.company_logo}`
+                          }
+                          alt={item.company_name || "Logo"}
+                          className="size-full object-contain p-1"
+                        />
+                      ) : (
+                        <Building2 className="size-5" strokeWidth={1.5} />
+                      )}
                     </div>
                     <div className="flex flex-col gap-1">
-                      <span className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                        {item.company_name}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                          {item.company_name}
+                        </span>
+                        {item.is_mother_company ? (
+                          <span className="text-[9px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-600 px-1.5 py-0.5 rounded border border-purple-500/20">
+                            Mother
+                          </span>
+                        ) : null}
+                      </div>
                       <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-snug">
                         {item.company_address || "No address provided for this subsidiary."}
                       </span>

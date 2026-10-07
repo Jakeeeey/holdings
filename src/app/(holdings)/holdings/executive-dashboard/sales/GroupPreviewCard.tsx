@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Trophy } from "lucide-react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { LayoutDashboard, Trophy, ChevronRight } from "lucide-react";
+import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,68 +19,94 @@ const formatShort = (val: number) => {
     return `${sign}₱${absVal.toFixed(0)}`;
 };
 
-export function GroupPreviewCard({ group }: { group: { id: number; group_name: string; [key: string]: unknown } }) {
+interface GroupPreviewCardProps {
+    group: { id: number; group_name: string; [key: string]: unknown };
+    startDate?: string;
+    endDate?: string;
+}
+
+export function GroupPreviewCard({ group, startDate: propStartDate, endDate: propEndDate }: GroupPreviewCardProps) {
     const [loading, setLoading] = useState(true);
     const [sales, setSales] = useState(0);
     const [target, setTarget] = useState(0);
+    const [syncPending, setSyncPending] = useState(false);
+
+    const today = new Date();
+    const startDate = propStartDate || format(startOfMonth(today), "yyyy-MM-dd");
+    const endDate = propEndDate || format(endOfMonth(today), "yyyy-MM-dd");
 
     useEffect(() => {
         const load = async () => {
+            setLoading(true);
             try {
-                const today = new Date();
-                const startDate = format(startOfMonth(today), "yyyy-MM-dd");
-                const endDate = format(endOfMonth(today), "yyyy-MM-dd");
+                // Since targets are stored with monthly fiscal_period (YYYY-MM-01),
+                // query targets for the full month of the selected week range.
+                const targetStart = format(startOfMonth(parseISO(startDate)), "yyyy-MM-dd");
+                const targetEnd = format(endOfMonth(parseISO(endDate)), "yyyy-MM-dd");
 
-                const [data, companyTargets] = await Promise.all([
+                const [dataRes, companyTargetsRes] = await Promise.allSettled([
                     fetchExecutiveHealthData(startDate, endDate, String(group.id)),
-                    fetchCompanyTargets(startDate, endDate, String(group.id))
+                    fetchCompanyTargets(targetStart, targetEnd, String(group.id))
                 ]);
 
-                let totalSales = 0;
-                if (Array.isArray(data)) {
-                    totalSales = data.reduce((sum, item) => sum + (item.netAmount || 0), 0);
+                if (dataRes.status === "fulfilled" && Array.isArray(dataRes.value)) {
+                    const totalSales = dataRes.value.reduce((sum, item) => sum + (item.netAmount || 0), 0);
+                    setSales(totalSales);
+                    setSyncPending(false);
+                } else {
+                    setSyncPending(true);
                 }
 
-                let totalTarget = 0;
-                if (Array.isArray(companyTargets)) {
-                    totalTarget = companyTargets.reduce((sum, t) => sum + (t.target_amount || 0), 0);
+                if (companyTargetsRes.status === "fulfilled" && Array.isArray(companyTargetsRes.value)) {
+                    const monthlyTarget = companyTargetsRes.value.reduce((sum, t) => sum + (t.target_amount || 0), 0);
+                    // Distribute monthly target by 4 weeks for weekly basis
+                    const weeklyTarget = monthlyTarget > 0 ? monthlyTarget / 4 : 0;
+                    setTarget(weeklyTarget);
                 }
-
-                setSales(totalSales);
-                setTarget(totalTarget);
             } catch (err) {
-                console.error(`Failed to load metrics for group ${group.id}:`, err);
+                console.warn(`Failed to load metrics for group ${group.id}:`, err);
+                setSyncPending(true);
             } finally {
                 setLoading(false);
             }
         };
         
         load();
-    }, [group.id]);
+    }, [group.id, startDate, endDate]);
 
     const achievement = target > 0 ? (sales / target) * 100 : 0;
     const isAchieved = achievement >= 100;
 
     return (
-        <Link href={`/holdings/executive-dashboard/sales/${group.id}/executive-health`} className="block h-full cursor-pointer">
-            <Card className="relative overflow-hidden border-border/40 bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-full min-h-[220px] group">
+        <Link 
+            href={`/holdings/executive-dashboard/sales/${group.id}/executive-health?from=${startDate.slice(0, 7)}&to=${endDate.slice(0, 7)}`} 
+            className="block cursor-pointer group"
+        >
+            <Card className="relative overflow-hidden border-border/40 bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-300 flex flex-col min-h-[250px] group">
             {/* Decorative background icon */}
                 <div className="absolute -right-6 -top-6 opacity-[0.02] group-hover:opacity-[0.08] transition-opacity">
                     <Trophy className="h-40 w-40 rotate-12" />
                 </div>
                 
                 <CardHeader className="border-b border-border/40 bg-muted/5 pb-4 relative z-10">
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="text-xl font-black uppercase tracking-tight italic">
-                            {group.group_name || "Unknown Group"}
-                        </CardTitle>
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <CardTitle className="text-xl font-black uppercase tracking-tight italic">
+                                {group.group_name || "Unknown Group"}
+                            </CardTitle>
+                            {syncPending && (
+                                <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-wider text-amber-500 border-amber-500/30 bg-amber-500/5">
+                                    Sync Pending
+                                </Badge>
+                            )}
+                        </div>
                         <div className="p-2 bg-background rounded-xl border border-border/40 shadow-sm group-hover:bg-primary/5 transition-colors">
                             <LayoutDashboard className="h-4 w-4 text-primary opacity-80" />
                         </div>
                     </div>
                 </CardHeader>
                 
-                <CardContent className="flex-1 p-6 flex flex-col gap-6 relative z-10 justify-center">
+                <CardContent className="flex-1 p-6 flex flex-col justify-between gap-4 relative z-10">
                     {loading ? (
                         <div className="space-y-4">
                             <div className="flex justify-between items-start">
@@ -138,10 +164,13 @@ export function GroupPreviewCard({ group }: { group: { id: number; group_name: s
                                     </div>
                                 </div>
                             </div>
-                            
-
                         </div>
                     )}
+
+                    <div className="pt-2 border-t border-border/30 flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-muted-foreground/70 group-hover:text-primary transition-colors">
+                        <span>View Executive Health &amp; Quotas</span>
+                        <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
                 </CardContent>
             </Card>
         </Link>

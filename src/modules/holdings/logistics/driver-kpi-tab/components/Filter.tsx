@@ -17,10 +17,20 @@ import {
 
 export default function Filter() {
   const { filters, setFilters, drivers, loading, refresh } = useDriverKPI();
+  const [prevStart, setPrevStart] = useState(filters.startDate);
+  const [prevEnd, setPrevEnd] = useState(filters.endDate);
   const [localStart, setLocalStart] = useState<string | undefined>(
     filters.startDate,
   );
   const [localEnd, setLocalEnd] = useState<string | undefined>(filters.endDate);
+
+  if (filters.startDate !== prevStart || filters.endDate !== prevEnd) {
+    setPrevStart(filters.startDate);
+    setPrevEnd(filters.endDate);
+    setLocalStart(filters.startDate);
+    setLocalEnd(filters.endDate);
+  }
+
   const [driverSearch, setDriverSearch] = useState("");
 
   // group drivers by full name (dedupe duplicates by normalized label)

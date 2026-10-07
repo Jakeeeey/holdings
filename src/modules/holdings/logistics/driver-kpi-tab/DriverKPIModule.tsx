@@ -215,9 +215,14 @@ function DriverKPIModuleContent() {
   );
 }
 
-export default function DriverKPIModule() {
+interface DriverKPIModuleProps {
+  initialStartDate?: string;
+  initialEndDate?: string;
+}
+
+export default function DriverKPIModule({ initialStartDate, initialEndDate }: DriverKPIModuleProps = {}) {
   return (
-    <DriverKPIProvider>
+    <DriverKPIProvider initialStartDate={initialStartDate} initialEndDate={initialEndDate}>
       <DriverKPIModuleContent />
     </DriverKPIProvider>
   );

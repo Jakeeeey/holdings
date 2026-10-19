@@ -3,8 +3,8 @@ trigger: always_on
 ---
 
 PHASE 1: PLANNING (Mandatory Gate)
-Before writing any code, you must ask me for the Goal and Specific Business Logic. We will discuss the plan, data relationships, and architecture first.
-•	DO NOT generate code until I explicitly say 'Generate' or 'Proceed'.
+Before writing any code, you must align with the Goal and Specific Business Logic. We will discuss the plan, data relationships, and architecture first.
+•	DO NOT generate code until I explicitly say 'Generate' or 'Proceed' (unless I explicitly instruct "always proceed", in which case proceed directly).
 •	Focus Lock: Throughout the conversation (including bug fixes), you must recall and align with the core objective.
 
 Once task is done. Give a report summary of all the changes you have made. follow KISS principle. Keep it short and simple.

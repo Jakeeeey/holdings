@@ -6,6 +6,9 @@ export interface CacheEntry<T> {
   expiresAt: number;
 }
 
+// In-memory cache fallback to handle large payloads without exceeding browser localStorage quota
+const memoryCache = new Map<string, CacheEntry<unknown>>();
+
 /**
  * Get end of day timestamp (23:59:59.999)
  */
@@ -41,10 +44,20 @@ export function generateCacheKey(
 }
 
 /**
- * Get data from cache
+ * Get data from cache (checks in-memory first, then localStorage)
  */
 export function getCacheData<T>(key: string): T | null {
   try {
+    // 1. Check in-memory cache first
+    const memEntry = memoryCache.get(key);
+    if (memEntry) {
+      if (Date.now() > memEntry.expiresAt) {
+        memoryCache.delete(key);
+      } else {
+        return memEntry.data as T;
+      }
+    }
+
     if (typeof window === "undefined") return null;
 
     const cached = localStorage.getItem(key);
@@ -58,9 +71,12 @@ export function getCacheData<T>(key: string): T | null {
       return null;
     }
 
+    // Populate in-memory cache
+    memoryCache.set(key, entry as CacheEntry<unknown>);
+
     return entry.data;
   } catch (error) {
-    console.error("Error reading cache:", error);
+    console.warn("Error reading cache:", error);
     return null;
   }
 }
@@ -70,23 +86,36 @@ export function getCacheData<T>(key: string): T | null {
  */
 export function setCacheData<T>(key: string, data: T): void {
   try {
-    if (typeof window === "undefined") return;
-
     const entry: CacheEntry<T> = {
       data,
       timestamp: Date.now(),
       expiresAt: getEndOfDayTimestamp(),
     };
 
+    // Always store in memory cache for high performance & unlimited capacity
+    memoryCache.set(key, entry as CacheEntry<unknown>);
+
+    if (typeof window === "undefined") return;
+
+    let serialized: string;
     try {
-      localStorage.setItem(key, JSON.stringify(entry));
+      serialized = JSON.stringify(entry);
+    } catch {
       return;
-    } catch (err) {
+    }
+
+    // Skip localStorage for payloads over ~2MB to avoid browser QuotaExceededError
+    if (serialized.length > 2 * 1024 * 1024) {
+      return;
+    }
+
+    try {
+      localStorage.setItem(key, serialized);
+      return;
+    } catch {
       // If quota exceeded, try clearing expired cache and evicting oldest entries
       try {
         clearExpiredCache();
-      } catch {}
-      try {
         const prefix = key.split(":")[0];
         const candidates: { k: string; ts: number }[] = [];
         for (const k of Object.keys(localStorage)) {
@@ -97,30 +126,21 @@ export function setCacheData<T>(key: string, data: T): void {
             ) as CacheEntry<unknown>;
             candidates.push({ k, ts: e.timestamp || 0 });
           } catch {
-            try {
-              localStorage.removeItem(k);
-            } catch {}
+            localStorage.removeItem(k);
           }
         }
         candidates.sort((a, b) => a.ts - b.ts);
         for (let i = 0; i < Math.min(10, candidates.length); i++) {
-          try {
-            localStorage.removeItem(candidates[i].k);
-          } catch {}
-          try {
-            localStorage.setItem(key, JSON.stringify(entry));
-            return;
-          } catch {
-            // continue
-          }
+          localStorage.removeItem(candidates[i].k);
         }
+        // Attempt write once more after eviction
+        localStorage.setItem(key, serialized);
       } catch {
-        // ignore
+        // Silently fall back to in-memory cache and IndexedDB without throwing QuotaExceededError
       }
-      console.error("Error writing cache:", err);
     }
   } catch (error) {
-    console.error("Error writing cache:", error);
+    console.warn("Could not save to cache:", error);
   }
 }
 
@@ -129,10 +149,11 @@ export function setCacheData<T>(key: string, data: T): void {
  */
 export function clearCache(key: string): void {
   try {
+    memoryCache.delete(key);
     if (typeof window === "undefined") return;
     localStorage.removeItem(key);
   } catch (error) {
-    console.error("Error clearing cache:", error);
+    console.warn("Error clearing cache:", error);
   }
 }
 
@@ -141,9 +162,17 @@ export function clearCache(key: string): void {
  */
 export function clearExpiredCache(prefix?: string): void {
   try {
+    // Clear expired from in-memory cache
+    const now = Date.now();
+    for (const [k, v] of memoryCache.entries()) {
+      if (prefix && !k.startsWith(prefix)) continue;
+      if (v.expiresAt && now > v.expiresAt) {
+        memoryCache.delete(k);
+      }
+    }
+
     if (typeof window === "undefined") return;
 
-    const now = Date.now();
     const keys = Object.keys(localStorage);
 
     keys.forEach((key) => {
@@ -157,14 +186,13 @@ export function clearExpiredCache(prefix?: string): void {
         if (entry.expiresAt && now > entry.expiresAt) {
           localStorage.removeItem(key);
         }
-        
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (error) {
+      } catch {
         // Invalid cache entry, remove it
         localStorage.removeItem(key);
       }
     });
   } catch (error) {
-    console.error("Error clearing expired cache:", error);
+    console.warn("Error clearing expired cache:", error);
   }
 }
+

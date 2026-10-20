@@ -5,7 +5,6 @@ import {
   AlertCircle,
   BarChart3,
   Users,
-  UserX,
   Loader2,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

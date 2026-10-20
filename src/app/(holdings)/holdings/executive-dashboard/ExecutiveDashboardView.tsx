@@ -38,6 +38,7 @@ import { CustomerSalesPreviewCard } from "./sales/CustomerSalesPreviewCard";
 import { AgingSlobPreviewCard } from "./sales/AgingSlobPreviewCard";
 import { LogisticsPreviewCard } from "./logistics/LogisticsPreviewCard";
 import { NewCustomerPreviewCard } from "./sales/NewCustomerPreviewCard";
+import { LostCustomerPreviewCard } from "./sales/LostCustomerPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -426,6 +427,14 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                                 group={group} 
                                                 startDate={startDate} 
                                                 endDate={endDate} 
+                                            />
+                                        );
+                                    }
+                                    if (cat === "loss-customer" || cat === "lost-customer" || cat === "lost-customers" || cat === "loss-customers" || cat === "lost-customer-management") {
+                                        return (
+                                            <LostCustomerPreviewCard 
+                                                key={group.id} 
+                                                group={group} 
                                             />
                                         );
                                     }

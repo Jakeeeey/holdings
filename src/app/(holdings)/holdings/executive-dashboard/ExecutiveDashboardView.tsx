@@ -37,6 +37,7 @@ import { SalesByTerritoryPreviewCard } from "./sales/SalesByTerritoryPreviewCard
 import { CustomerSalesPreviewCard } from "./sales/CustomerSalesPreviewCard";
 import { AgingSlobPreviewCard } from "./sales/AgingSlobPreviewCard";
 import { LogisticsPreviewCard } from "./logistics/LogisticsPreviewCard";
+import { NewCustomerPreviewCard } from "./sales/NewCustomerPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -411,6 +412,16 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     if (cat === "logistics-fullfillment-rate" || cat === "logistics") {
                                         return (
                                             <LogisticsPreviewCard 
+                                                key={group.id} 
+                                                group={group} 
+                                                startDate={startDate} 
+                                                endDate={endDate} 
+                                            />
+                                        );
+                                    }
+                                    if (cat === "new-customer" || cat === "new-customers" || cat === "new customer") {
+                                        return (
+                                            <NewCustomerPreviewCard 
                                                 key={group.id} 
                                                 group={group} 
                                                 startDate={startDate} 

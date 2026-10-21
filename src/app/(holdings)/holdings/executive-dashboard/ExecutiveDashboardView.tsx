@@ -41,6 +41,7 @@ import { NewCustomerPreviewCard } from "./sales/NewCustomerPreviewCard";
 import { LostCustomerPreviewCard } from "./sales/LostCustomerPreviewCard";
 import { CollectionVsSalesPreviewCard } from "./sales/CollectionVsSalesPreviewCard";
 import { AccountsPayablePreviewCard } from "./sales/AccountsPayablePreviewCard";
+import { AccountsReceivablePreviewCard } from "./sales/AccountsReceivablePreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -453,6 +454,16 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     if (cat === "accounts-payable" || cat === "accounts-payables" || cat === "payable" || cat === "payables" || cat === "accounts_payable") {
                                         return (
                                             <AccountsPayablePreviewCard 
+                                                key={group.id} 
+                                                group={group} 
+                                                startDate={startDate} 
+                                                endDate={endDate} 
+                                            />
+                                        );
+                                    }
+                                    if (cat === "accounts-receivable" || cat === "accounts-receivables" || cat === "receivable" || cat === "receivables" || cat === "accounts_receivable") {
+                                        return (
+                                            <AccountsReceivablePreviewCard 
                                                 key={group.id} 
                                                 group={group} 
                                                 startDate={startDate} 

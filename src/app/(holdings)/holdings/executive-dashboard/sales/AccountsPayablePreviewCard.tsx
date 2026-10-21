@@ -237,8 +237,12 @@ export function AccountsPayablePreviewCard({
         ]);
         const doc = new jsPDF({ orientation: "landscape" });
         const pageW = doc.internal.pageSize.getWidth();
-        const total = metrics?.totalPayable ?? 0;
-        const formattedTotal = `PHP ${total.toLocaleString("en-PH", {
+        const totalPayable = metrics?.totalPayable ?? 0;
+        const formattedPayable = `PHP ${totalPayable.toLocaleString("en-PH", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        })}`;
+        const formattedOutstanding = `PHP ${totalOutstanding.toLocaleString("en-PH", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         })}`;
@@ -248,9 +252,9 @@ export function AccountsPayablePreviewCard({
         doc.setTextColor(20, 20, 20);
         doc.text(`Accounts Payable Summary (${group.group_name || "Holdings"})`, 14, 16);
 
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
-        const totalLabel = `Grand Total: ${formattedTotal}`;
+        const totalLabel = `Outstanding: ${formattedOutstanding}   |   Total Payables: ${formattedPayable}`;
         const totalLabelX = Math.max(pageW / 2, pageW - 14 - doc.getTextWidth(totalLabel));
         doc.text(totalLabel, totalLabelX, 16);
 
@@ -318,13 +322,23 @@ export function AccountsPayablePreviewCard({
                         </div>
                         <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
                             {!loading && (
-                                <div className="text-right border-r border-border/60 pr-3 hidden sm:block">
-                                    <p className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">
-                                        Total Payable
-                                    </p>
-                                    <p className="text-base sm:text-lg font-black font-mono text-primary leading-tight">
-                                        {formatPeso(metrics?.totalPayable ?? 0)}
-                                    </p>
+                                <div className="hidden sm:flex items-center gap-3.5 text-right border-r border-border/60 pr-3.5">
+                                    <div>
+                                        <p className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">
+                                            Outstanding Balance
+                                        </p>
+                                        <p className="text-base sm:text-lg font-black font-mono text-foreground leading-tight">
+                                            {formatPeso(totalOutstanding)}
+                                        </p>
+                                    </div>
+                                    <div className="border-l border-border/50 pl-3.5">
+                                        <p className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">
+                                            Total Payables
+                                        </p>
+                                        <p className="text-base sm:text-lg font-black font-mono text-primary leading-tight">
+                                            {formatPeso(metrics?.totalPayable ?? 0)}
+                                        </p>
+                                    </div>
                                 </div>
                             )}
                             <div className="flex items-center gap-2">
@@ -380,11 +394,11 @@ export function AccountsPayablePreviewCard({
                                     <span>Composition by Outstanding Amount</span>
                                     <div className="flex items-center gap-2 font-mono">
                                         <span className="text-muted-foreground font-medium hidden sm:inline">
-                                            Total Payable: <strong className="text-foreground">{formatPeso(metrics?.totalPayable ?? 0)}</strong>
+                                            Total Payables: <strong className="text-foreground">{formatPeso(metrics?.totalPayable ?? 0)}</strong>
                                         </span>
                                         <span className="hidden sm:inline text-border">|</span>
                                         <span className="text-foreground font-bold">
-                                            {formatPeso(totalOutstanding)} OUTSTANDING
+                                            {formatPeso(totalOutstanding)} OUTSTANDING BALANCE
                                         </span>
                                     </div>
                                 </div>

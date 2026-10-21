@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
     Receipt,
@@ -467,18 +467,19 @@ export function AccountsReceivablePreviewCard({
                                                         }
                                                     />
                                                     <Tooltip
-                                                        formatter={(val: number | string | undefined) => [
-                                                            formatPeso(Number(val || 0)),
-                                                            "Amount",
-                                                        ]}
-                                                        contentStyle={{
-                                                            backgroundColor: "hsl(var(--popover))",
-                                                            borderColor: "hsl(var(--border))",
-                                                            color: "hsl(var(--popover-foreground))",
-                                                            borderRadius: "8px",
-                                                            fontSize: "12px",
+                                                        content={({ active, payload, label }) => {
+                                                            if (!active || !payload?.length) return null;
+                                                            const amount = Number(payload[0]?.value || 0);
+                                                            return (
+                                                                <div className="bg-popover border border-border rounded-lg shadow-xl px-3 py-2 text-xs">
+                                                                    <p className="font-bold text-foreground mb-1">{label}</p>
+                                                                    <p className="text-blue-600 dark:text-blue-400 font-semibold flex justify-between gap-4">
+                                                                        <span>Amount:</span>
+                                                                        <span>{formatPeso(amount)}</span>
+                                                                    </p>
+                                                                </div>
+                                                            );
                                                         }}
-                                                        labelStyle={{ color: "hsl(var(--muted-foreground))" }}
                                                     />
                                                     <Bar
                                                         dataKey="amount"

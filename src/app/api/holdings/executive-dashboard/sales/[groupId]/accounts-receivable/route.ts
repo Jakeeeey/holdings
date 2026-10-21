@@ -396,6 +396,7 @@ export async function GET(
       totalReceivable,
       totalOutstanding,
       totalUnposted,
+      totalOverdue,
       realOutstanding,
       avgOverdue,
       overdueCount,

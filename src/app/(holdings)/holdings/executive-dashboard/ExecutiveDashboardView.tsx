@@ -79,7 +79,7 @@ const MONTHS = [
 ];
 
 export function ExecutiveDashboardView({ initialGroups }: { initialGroups: DashboardGroup[] }) {
-    const [filterMode, setFilterMode] = useState<FilterMode>("weekly");
+    const [filterMode, setFilterMode] = useState<FilterMode>("ytd");
     const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
 
     // Compute date boundaries based on selected filter mode

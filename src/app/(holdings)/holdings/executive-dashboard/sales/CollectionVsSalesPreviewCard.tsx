@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Receipt, TrendingUp, ChevronRight, CreditCard, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfYear } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,8 +40,8 @@ export function CollectionVsSalesPreviewCard({
     const [syncPending, setSyncPending] = useState(false);
 
     const today = new Date();
-    const startDate = propStartDate || format(startOfMonth(today), "yyyy-MM-dd");
-    const endDate = propEndDate || format(endOfMonth(today), "yyyy-MM-dd");
+    const startDate = propStartDate || format(startOfYear(today), "yyyy-MM-dd");
+    const endDate = propEndDate || format(today, "yyyy-MM-dd");
 
     useEffect(() => {
         let isMounted = true;

@@ -45,7 +45,7 @@ function getPresetDates(preset: DatePreset): { startDate: string; endDate: strin
 }
 
 export function useCollectionVsSales(groupId?: string | number) {
-    const defaultRange = getPresetDates("this-month");
+    const defaultRange = getPresetDates("ytd");
     const [filters, setFilters] = useState<CollectionVsSalesFiltersState>({
         startDate: defaultRange.startDate,
         endDate: defaultRange.endDate,
@@ -53,7 +53,7 @@ export function useCollectionVsSales(groupId?: string | number) {
         paymentMethod: "ALL",
         searchQuery: "",
     });
-    const [datePreset, setDatePresetState] = useState<DatePreset>("this-month");
+    const [datePreset, setDatePresetState] = useState<DatePreset>("ytd");
     const [activeTab, setActiveTab] = useState<string>("overview");
 
     const [loading, setLoading] = useState<boolean>(true);
@@ -121,8 +121,8 @@ export function useCollectionVsSales(groupId?: string | number) {
     };
 
     const resetFilters = () => {
-        const { startDate, endDate } = getPresetDates("this-month");
-        setDatePresetState("this-month");
+        const { startDate, endDate } = getPresetDates("ytd");
+        setDatePresetState("ytd");
         setFilters({
             startDate,
             endDate,

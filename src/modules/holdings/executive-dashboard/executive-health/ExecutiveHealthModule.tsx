@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, Suspense } from "react";
-import { useRouter } from "next/navigation"; 
+import { useRouter, useSearchParams } from "next/navigation"; 
 import { 
     Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, Scatter, ComposedChart 
 } from 'recharts';
@@ -21,13 +21,19 @@ import { VSalesPerformanceDataDto, TargetSettingExecutive, TargetSettingDivision
 
 function ExecutiveHealthContent({ groupId }: { groupId: string }) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     
-    // Default to current month for a "Live" dashboard feel
+    // Default to URL search params if present, otherwise current month for a "Live" dashboard feel
     const today = new Date();
     const currentMonthStr = format(today, "yyyy-MM");
+    const queryFrom = searchParams?.get("from");
+    const queryTo = searchParams?.get("to");
 
-    const [fromMonth, setFromMonth] = useState(currentMonthStr);
-    const [toMonth, setToMonth] = useState(currentMonthStr);
+    const [userFromMonth, setUserFromMonth] = useState<string | null>(null);
+    const [userToMonth, setUserToMonth] = useState<string | null>(null);
+
+    const fromMonth = userFromMonth ?? (queryFrom || currentMonthStr);
+    const toMonth = userToMonth ?? (queryTo || currentMonthStr);
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
     const [targets, setTargets] = useState<TargetSettingExecutive[]>([]);
     const [allocations, setAllocations] = useState<TargetSettingDivision[]>([]);
@@ -154,9 +160,9 @@ function ExecutiveHealthContent({ groupId }: { groupId: string }) {
                     <div className="flex items-center gap-2 px-4 border-r border-border/40 py-1">
                         <Calendar className="h-4 w-4 text-primary" />
                         <div className="flex items-center gap-1">
-                            <Input type="month" value={fromMonth} onChange={e => setFromMonth(e.target.value)} className="w-[120px] border-none bg-transparent h-8 text-[11px] font-black uppercase focus-visible:ring-0 cursor-pointer p-0" />
+                            <Input type="month" value={fromMonth} onChange={e => setUserFromMonth(e.target.value)} className="w-[120px] border-none bg-transparent h-8 text-[11px] font-black uppercase focus-visible:ring-0 cursor-pointer p-0" />
                             <span className="text-muted-foreground/30 font-black px-1">/</span>
-                            <Input type="month" value={toMonth} onChange={e => setToMonth(e.target.value)} className="w-[120px] border-none bg-transparent h-8 text-[11px] font-black uppercase focus-visible:ring-0 cursor-pointer p-0" />
+                            <Input type="month" value={toMonth} onChange={e => setUserToMonth(e.target.value)} className="w-[120px] border-none bg-transparent h-8 text-[11px] font-black uppercase focus-visible:ring-0 cursor-pointer p-0" />
                         </div>
                     </div>
                     <div className="px-4 py-1">

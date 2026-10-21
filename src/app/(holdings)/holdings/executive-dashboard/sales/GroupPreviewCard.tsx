@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 
-import { fetchExecutiveHealthData, fetchCompanyTargets } from "@/modules/holdings/executive-dashboard/executive-health/providers/fetchProvider";
+import { fetchExecutiveHealthData, fetchCompanyTargets, getDivisions } from "@/modules/holdings/executive-dashboard/executive-health/providers/fetchProvider";
 
 const formatShort = (val: number) => {
     const absVal = Math.abs(val);
@@ -44,13 +44,31 @@ export function GroupPreviewCard({ group, startDate: propStartDate, endDate: pro
                 const targetStart = format(startOfMonth(parseISO(startDate)), "yyyy-MM-dd");
                 const targetEnd = format(endOfMonth(parseISO(endDate)), "yyyy-MM-dd");
 
-                const [dataRes, companyTargetsRes] = await Promise.allSettled([
+                const [dataRes, companyTargetsRes, divisionsRes] = await Promise.allSettled([
                     fetchExecutiveHealthData(startDate, endDate, String(group.id)),
-                    fetchCompanyTargets(targetStart, targetEnd, String(group.id))
+                    fetchCompanyTargets(targetStart, targetEnd, String(group.id)),
+                    getDivisions(String(group.id))
                 ]);
 
                 if (dataRes.status === "fulfilled" && Array.isArray(dataRes.value)) {
-                    const totalSales = dataRes.value.reduce((sum, item) => sum + (item.netAmount || 0), 0);
+                    const rawData = dataRes.value;
+                    const metadataDivs = (divisionsRes.status === "fulfilled" && Array.isArray(divisionsRes.value))
+                        ? (divisionsRes.value as { division_id?: number; division_name?: string }[])
+                        : [];
+
+                    let totalSales = 0;
+                    if (metadataDivs.length > 0) {
+                        const activeDivisionIds = new Set(metadataDivs.map(d => d.division_id));
+                        const activeDivisionNames = new Set(metadataDivs.map(d => (d.division_name || "").toUpperCase()));
+
+                        totalSales = rawData.reduce((sum, item) => {
+                            const isBiaDivision = activeDivisionIds.has(item.divisionId) || activeDivisionNames.has((item.divisionName || "").toUpperCase());
+                            return isBiaDivision ? sum + (item.netAmount || 0) : sum;
+                        }, 0);
+                    } else {
+                        totalSales = rawData.reduce((sum, item) => sum + (item.netAmount || 0), 0);
+                    }
+
                     setSales(totalSales);
                     setSyncPending(false);
                 } else {
@@ -58,10 +76,12 @@ export function GroupPreviewCard({ group, startDate: propStartDate, endDate: pro
                 }
 
                 if (companyTargetsRes.status === "fulfilled" && Array.isArray(companyTargetsRes.value)) {
-                    const monthlyTarget = companyTargetsRes.value.reduce((sum, t) => sum + (t.target_amount || 0), 0);
-                    // Distribute monthly target by 4 weeks for weekly basis
-                    const weeklyTarget = monthlyTarget > 0 ? monthlyTarget / 4 : 0;
-                    setTarget(weeklyTarget);
+                    const totalTarget = companyTargetsRes.value.reduce((sum, t) => sum + (t.target_amount || 0), 0);
+                    const daysDiff = Math.max(1, Math.round((parseISO(endDate).getTime() - parseISO(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1);
+                    // Distribute monthly target by 4 weeks for weekly view (<= 10 days)
+                    // For monthly or YTD views (> 10 days), use the full target amount for the period
+                    const effectiveTarget = daysDiff <= 10 ? (totalTarget > 0 ? totalTarget / 4 : 0) : totalTarget;
+                    setTarget(effectiveTarget);
                 }
             } catch (err) {
                 console.warn(`Failed to load metrics for group ${group.id}:`, err);

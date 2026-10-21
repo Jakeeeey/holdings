@@ -1,18 +1,44 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { format, startOfWeek, endOfWeek, subWeeks, addWeeks } from "date-fns";
+import { 
+    format, 
+    startOfWeek, 
+    endOfWeek, 
+    subWeeks, 
+    addWeeks,
+    startOfMonth,
+    endOfMonth,
+    subMonths,
+    addMonths,
+    startOfYear,
+    endOfYear,
+    subYears,
+    addYears,
+    setMonth,
+    isSameMonth,
+    isSameYear
+} from "date-fns";
 import { ChevronRight, ChevronLeft, LayoutDashboard, Layers, Calendar } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { GroupPreviewCard } from "./sales/GroupPreviewCard";
 import { ProductSalesPreviewCard } from "./sales/ProductSalesPreviewCard";
 import { SalesByTerritoryPreviewCard } from "./sales/SalesByTerritoryPreviewCard";
 import { CustomerSalesPreviewCard } from "./sales/CustomerSalesPreviewCard";
 import { AgingSlobPreviewCard } from "./sales/AgingSlobPreviewCard";
 import { LogisticsPreviewCard } from "./logistics/LogisticsPreviewCard";
+import { NewCustomerPreviewCard } from "./sales/NewCustomerPreviewCard";
+import { LostCustomerPreviewCard } from "./sales/LostCustomerPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -34,28 +60,121 @@ interface ContainerSection {
     groups: DashboardGroup[];
 }
 
+type FilterMode = "weekly" | "monthly" | "ytd";
+
+const MONTHS = [
+    { value: "0", label: "January" },
+    { value: "1", label: "February" },
+    { value: "2", label: "March" },
+    { value: "3", label: "April" },
+    { value: "4", label: "May" },
+    { value: "5", label: "June" },
+    { value: "6", label: "July" },
+    { value: "7", label: "August" },
+    { value: "8", label: "September" },
+    { value: "9", label: "October" },
+    { value: "10", label: "November" },
+    { value: "11", label: "December" },
+];
+
 export function ExecutiveDashboardView({ initialGroups }: { initialGroups: DashboardGroup[] }) {
+    const [filterMode, setFilterMode] = useState<FilterMode>("weekly");
     const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
 
-    // Compute exact weekly boundaries (Monday to Sunday)
-    const { startDate, endDate, startLabel, endLabel, weekNumber, isCurrentWeek, isLastWeek } = useMemo(() => {
+    // Compute date boundaries based on selected filter mode
+    const { 
+        startDate, 
+        endDate, 
+        dateLabel, 
+        badgeText, 
+        isCurrentPeriod, 
+        isPreviousPeriod 
+    } = useMemo(() => {
         const today = new Date();
+
+        if (filterMode === "monthly") {
+            const start = startOfMonth(currentDate);
+            const end = endOfMonth(currentDate);
+            const thisMonth = startOfMonth(today);
+            const lastMonth = startOfMonth(subMonths(today, 1));
+
+            return {
+                startDate: format(start, "yyyy-MM-dd"),
+                endDate: format(end, "yyyy-MM-dd"),
+                dateLabel: format(currentDate, "MMMM yyyy"),
+                badgeText: format(currentDate, "MMM"),
+                isCurrentPeriod: isSameMonth(currentDate, thisMonth),
+                isPreviousPeriod: isSameMonth(currentDate, lastMonth),
+            };
+        }
+
+        if (filterMode === "ytd") {
+            const start = startOfYear(currentDate);
+            const isCurrentYr = isSameYear(currentDate, today);
+            const end = isCurrentYr ? today : endOfYear(currentDate);
+            const lastYear = subYears(today, 1);
+
+            return {
+                startDate: format(start, "yyyy-MM-dd"),
+                endDate: format(end, "yyyy-MM-dd"),
+                dateLabel: `Jan 1 – ${format(end, "MMM d, yyyy")}`,
+                badgeText: `YTD ${format(currentDate, "yyyy")}`,
+                isCurrentPeriod: isCurrentYr,
+                isPreviousPeriod: isSameYear(currentDate, lastYear),
+            };
+        }
+
+        // Default: weekly (Monday to Sunday)
         const start = startOfWeek(currentDate, { weekStartsOn: 1 });
         const end = endOfWeek(currentDate, { weekStartsOn: 1 });
-        
         const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
         const lastWeekStart = startOfWeek(subWeeks(today, 1), { weekStartsOn: 1 });
 
         return {
             startDate: format(start, "yyyy-MM-dd"),
             endDate: format(end, "yyyy-MM-dd"),
-            startLabel: format(start, "MMM d"),
-            endLabel: format(end, "MMM d, yyyy"),
-            weekNumber: format(currentDate, "w"),
-            isCurrentWeek: format(start, "yyyy-MM-dd") === format(thisWeekStart, "yyyy-MM-dd"),
-            isLastWeek: format(start, "yyyy-MM-dd") === format(lastWeekStart, "yyyy-MM-dd"),
+            dateLabel: `${format(start, "MMM d")} – ${format(end, "MMM d, yyyy")}`,
+            badgeText: `W${format(currentDate, "w")}`,
+            isCurrentPeriod: format(start, "yyyy-MM-dd") === format(thisWeekStart, "yyyy-MM-dd"),
+            isPreviousPeriod: format(start, "yyyy-MM-dd") === format(lastWeekStart, "yyyy-MM-dd"),
         };
-    }, [currentDate]);
+    }, [currentDate, filterMode]);
+
+    const handlePrevious = () => {
+        setCurrentDate((prev) => {
+            if (filterMode === "monthly") return subMonths(prev, 1);
+            if (filterMode === "ytd") return subYears(prev, 1);
+            return subWeeks(prev, 1);
+        });
+    };
+
+    const handleNext = () => {
+        setCurrentDate((prev) => {
+            if (filterMode === "monthly") return addMonths(prev, 1);
+            if (filterMode === "ytd") return addYears(prev, 1);
+            return addWeeks(prev, 1);
+        });
+    };
+
+    const handleSetCurrentPeriod = () => {
+        setCurrentDate(new Date());
+    };
+
+    const handleSetPreviousPeriod = () => {
+        const today = new Date();
+        if (filterMode === "monthly") {
+            setCurrentDate(subMonths(today, 1));
+        } else if (filterMode === "ytd") {
+            setCurrentDate(subYears(today, 1));
+        } else {
+            setCurrentDate(subWeeks(today, 1));
+        }
+    };
+
+    const handleMonthChange = (monthIndexStr: string) => {
+        const monthIndex = parseInt(monthIndexStr, 10);
+        setCurrentDate((prev) => setMonth(prev, monthIndex));
+    };
 
     // Group the APIs based on the dashboard container
     const containerSections = useMemo(() => {
@@ -110,36 +229,85 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                             </p>
                         </div>
 
-                        {/* WEEKLY DATE FILTER CONTROLS */}
-                        <div className="flex flex-wrap items-center gap-2 bg-card/60 backdrop-blur-md border border-border/40 rounded-2xl p-2 shadow-xl">
-                            {/* Preset Buttons */}
-                            <div className="flex items-center gap-1 border-r border-border/40 pr-2">
+                        {/* DATE FILTER CONTROLS */}
+                        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 bg-card/60 backdrop-blur-md border border-border/40 rounded-2xl p-2 shadow-xl">
+                            {/* Mode Selector */}
+                            <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-xl border border-border/40">
                                 <Button
-                                    variant={isCurrentWeek ? "default" : "ghost"}
+                                    variant={filterMode === "weekly" ? "default" : "ghost"}
                                     size="sm"
-                                    onClick={() => setCurrentDate(new Date())}
-                                    className="h-7 text-[10px] font-black uppercase tracking-wider px-2.5"
+                                    onClick={() => setFilterMode("weekly")}
+                                    className="h-7 text-[10px] font-black uppercase tracking-wider px-2.5 rounded-lg"
                                 >
-                                    This Week
+                                    Weekly
                                 </Button>
                                 <Button
-                                    variant={isLastWeek ? "default" : "ghost"}
+                                    variant={filterMode === "monthly" ? "default" : "ghost"}
                                     size="sm"
-                                    onClick={() => setCurrentDate(subWeeks(new Date(), 1))}
-                                    className="h-7 text-[10px] font-black uppercase tracking-wider px-2.5"
+                                    onClick={() => setFilterMode("monthly")}
+                                    className="h-7 text-[10px] font-black uppercase tracking-wider px-2.5 rounded-lg"
                                 >
-                                    Last Week
+                                    Monthly
+                                </Button>
+                                <Button
+                                    variant={filterMode === "ytd" ? "default" : "ghost"}
+                                    size="sm"
+                                    onClick={() => setFilterMode("ytd")}
+                                    className="h-7 text-[10px] font-black uppercase tracking-wider px-2.5 rounded-lg"
+                                >
+                                    YTD
                                 </Button>
                             </div>
 
-                            {/* Week Stepper */}
+                            {/* Preset Buttons */}
+                            <div className="flex items-center gap-1 border-r border-border/40 pr-2">
+                                <Button
+                                    variant={isCurrentPeriod ? "default" : "ghost"}
+                                    size="sm"
+                                    onClick={handleSetCurrentPeriod}
+                                    className="h-7 text-[10px] font-black uppercase tracking-wider px-2.5"
+                                >
+                                    {filterMode === "monthly" ? "This Month" : filterMode === "ytd" ? "This Year" : "This Week"}
+                                </Button>
+                                <Button
+                                    variant={isPreviousPeriod ? "default" : "ghost"}
+                                    size="sm"
+                                    onClick={handleSetPreviousPeriod}
+                                    className="h-7 text-[10px] font-black uppercase tracking-wider px-2.5"
+                                >
+                                    {filterMode === "monthly" ? "Last Month" : filterMode === "ytd" ? "Last Year" : "Last Week"}
+                                </Button>
+                            </div>
+
+                            {/* Month Dropdown (Monthly mode only) */}
+                            {filterMode === "monthly" && (
+                                <div className="border-r border-border/40 pr-2">
+                                    <Select
+                                        value={String(currentDate.getMonth())}
+                                        onValueChange={handleMonthChange}
+                                    >
+                                        <SelectTrigger className="h-7 w-[125px] text-[10px] font-black uppercase tracking-wider bg-background/50 border-border/60">
+                                            <SelectValue placeholder="Select Month" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {MONTHS.map((m) => (
+                                                <SelectItem key={m.value} value={m.value} className="text-xs">
+                                                    {m.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {/* Stepper & Date Display */}
                             <div className="flex items-center gap-1">
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => setCurrentDate((prev) => subWeeks(prev, 1))}
+                                    onClick={handlePrevious}
                                     className="h-7 w-7 rounded-lg"
-                                    title="Previous Week"
+                                    title="Previous"
                                 >
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
@@ -147,19 +315,19 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                 <div className="flex items-center gap-2 px-2">
                                     <Calendar className="h-4 w-4 text-primary" />
                                     <span className="text-[11px] font-black uppercase tracking-wider text-foreground whitespace-nowrap">
-                                        {startLabel} – {endLabel}
+                                        {dateLabel}
                                     </span>
                                     <Badge variant="outline" className="text-[9px] font-black tracking-wider px-1.5 py-0 border-primary/30 text-primary bg-primary/5">
-                                        W{weekNumber}
+                                        {badgeText}
                                     </Badge>
                                 </div>
 
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => setCurrentDate((prev) => addWeeks(prev, 1))}
+                                    onClick={handleNext}
                                     className="h-7 w-7 rounded-lg"
-                                    title="Next Week"
+                                    title="Next"
                                 >
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
@@ -249,6 +417,24 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                                 group={group} 
                                                 startDate={startDate} 
                                                 endDate={endDate} 
+                                            />
+                                        );
+                                    }
+                                    if (cat === "new-customer" || cat === "new-customers" || cat === "new customer") {
+                                        return (
+                                            <NewCustomerPreviewCard 
+                                                key={group.id} 
+                                                group={group} 
+                                                startDate={startDate} 
+                                                endDate={endDate} 
+                                            />
+                                        );
+                                    }
+                                    if (cat === "loss-customer" || cat === "lost-customer" || cat === "lost-customers" || cat === "loss-customers" || cat === "lost-customer-management") {
+                                        return (
+                                            <LostCustomerPreviewCard 
+                                                key={group.id} 
+                                                group={group} 
                                             />
                                         );
                                     }

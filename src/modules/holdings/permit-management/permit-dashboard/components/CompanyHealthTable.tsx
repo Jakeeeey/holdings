@@ -12,6 +12,8 @@ import {
   Building2,
   MapPin,
   FileText,
+  RefreshCw,
+  WifiOff,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -23,6 +25,8 @@ import { PermitProductCard } from "./PermitProductCard";
 interface CompanyHealthTableProps {
   companies: CompanyHealthRecord[];
   isLoading: boolean;
+  onSyncCompany?: (companyId: number) => Promise<boolean>;
+  syncingCompanyId?: number | null;
 }
 
 const AVATAR_GRADIENTS = [
@@ -93,10 +97,16 @@ const CompanyAvatar: React.FC<{
   );
 };
 
-export const CompanyHealthTable: React.FC<CompanyHealthTableProps> = ({ companies, isLoading }) => {
+export const CompanyHealthTable: React.FC<CompanyHealthTableProps> = ({
+  companies,
+  isLoading,
+  onSyncCompany,
+  syncingCompanyId,
+}) => {
   const [expandedCompanies, setExpandedCompanies] = useState<Record<number, boolean>>({});
   const [previewPermit, setPreviewPermit] = useState<DashboardPermitItem | null>(null);
   const [selectedCompanyPermits, setSelectedCompanyPermits] = useState<DashboardPermitItem[]>([]);
+  const [selectedCompanyDirectusUrl, setSelectedCompanyDirectusUrl] = useState<string | null>(null);
 
   const toggleExpand = (companyId: number) => {
     setExpandedCompanies((prev) => ({
@@ -165,14 +175,29 @@ export const CompanyHealthTable: React.FC<CompanyHealthTableProps> = ({ companie
                 const isExpanded = Boolean(expandedCompanies[comp.company_id]);
                 const avatarGradient = getAvatarGradient(comp.company_name);
 
-                // Health badge styling with clean English terms
+                const isOffline = comp.connection_status === "offline";
+                const isUnconfigured = comp.connection_status === "unconfigured";
+
+                // Health badge styling with clean English terms and offline awareness
                 let healthBadge = {
                   label: "Fully Compliant",
                   className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
                   icon: ShieldCheck,
                 };
 
-                if (comp.health_level === "unmonitored" || comp.total_permits === 0) {
+                if (isOffline) {
+                  healthBadge = {
+                    label: "Connection Offline",
+                    className: "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-800",
+                    icon: WifiOff,
+                  };
+                } else if (isUnconfigured) {
+                  healthBadge = {
+                    label: "Not Configured",
+                    className: "bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700",
+                    icon: AlertCircle,
+                  };
+                } else if (comp.health_level === "unmonitored" || comp.total_permits === 0) {
                   healthBadge = {
                     label: "No Permits Recorded",
                     className: "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700",
@@ -199,7 +224,9 @@ export const CompanyHealthTable: React.FC<CompanyHealthTableProps> = ({ companie
                   <React.Fragment key={comp.company_id}>
                     <tr
                       className={`hover:bg-slate-50/70 dark:hover:bg-slate-900/50 transition-colors ${
-                        comp.health_level === "critical"
+                        isOffline
+                          ? "bg-slate-50/60 dark:bg-slate-900/40 opacity-90"
+                          : comp.health_level === "critical"
                           ? "bg-destructive/[0.02]"
                           : comp.health_level === "warning"
                           ? "bg-amber-500/[0.02]"
@@ -225,21 +252,65 @@ export const CompanyHealthTable: React.FC<CompanyHealthTableProps> = ({ companie
                               </p>
                             </div>
 
-                            {/* TIN & Address info */}
+                            {/* TIN, Directus Status & Address info */}
                             <div className="mt-1 space-y-0.5">
-                              {comp.company_tin ? (
-                                <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {comp.company_tin ? (
                                   <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/80 font-mono bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1 py-0.2 rounded shrink-0">
                                     TIN: {comp.company_tin}
                                   </span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1.5">
+                                ) : (
                                   <span className="text-[9px] text-muted-foreground/60 italic">
-                                    No TIN provided
+                                    No TIN
                                   </span>
-                                </div>
-                              )}
+                                )}
+
+                                {comp.is_directus_configured ? (
+                                  comp.connection_status === "offline" ? (
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <span
+                                        className="text-[9px] font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/70 border border-rose-300 dark:border-rose-800 px-1.5 py-0.2 rounded inline-flex items-center gap-1 cursor-help"
+                                        title={comp.connection_error ? `Technical details: ${comp.connection_error}` : "Company API is currently offline or unreachable."}
+                                      >
+                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                        Offline
+                                      </span>
+                                      {onSyncCompany && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onSyncCompany(comp.company_id);
+                                          }}
+                                          disabled={syncingCompanyId === comp.company_id}
+                                          className="p-1 rounded text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer disabled:opacity-50"
+                                          title="Test / Retry connection"
+                                        >
+                                          <RefreshCw className={`h-2.5 w-2.5 ${syncingCompanyId === comp.company_id ? "animate-spin text-rose-600" : ""}`} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <span
+                                        className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 px-1.5 py-0.2 rounded inline-flex items-center gap-1 cursor-help"
+                                        title="Company API is online and responding normally."
+                                      >
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                        Online
+                                      </span>
+                                    </div>
+                                  )
+                                ) : (
+                                  <span
+                                    className="text-[9px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-1.5 py-0.2 rounded inline-flex items-center gap-1 shrink-0 cursor-help"
+                                    title="No Directus URL or token configured for this company."
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                    Unconfigured
+                                  </span>
+                                )}
+                              </div>
 
                               {comp.company_address ? (
                                 <div className="flex items-start gap-1 text-[11px] text-muted-foreground leading-snug">
@@ -270,7 +341,19 @@ export const CompanyHealthTable: React.FC<CompanyHealthTableProps> = ({ companie
                       {/* Compliance Progress Column */}
                       <td className="px-4 py-3.5">
                         <div className="space-y-1.5 max-w-[180px]">
-                          {comp.total_permits === 0 ? (
+                          {isOffline ? (
+                            <div className="flex items-center gap-1.5 text-xs text-rose-700/80 dark:text-rose-400">
+                              <span className="font-medium bg-rose-500/10 px-2 py-0.5 rounded text-[11px] border border-rose-300 dark:border-rose-800/80">
+                                Sync Unavailable
+                              </span>
+                            </div>
+                          ) : isUnconfigured ? (
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <span className="font-medium bg-muted px-2 py-0.5 rounded text-[11px]">
+                                Not configured
+                              </span>
+                            </div>
+                          ) : comp.total_permits === 0 ? (
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                               <span className="font-medium bg-muted px-2 py-0.5 rounded text-[11px]">
                                 No permits recorded
@@ -303,21 +386,31 @@ export const CompanyHealthTable: React.FC<CompanyHealthTableProps> = ({ companie
 
                       {/* Permit Counts Breakdown Column */}
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium">
-                            {comp.active_count} Active
+                        {isOffline ? (
+                          <span className="text-xs text-muted-foreground italic">
+                            Unreachable
                           </span>
-                          {comp.expiring_count > 0 && (
-                            <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 font-semibold">
-                              {comp.expiring_count} Expiring
+                        ) : isUnconfigured ? (
+                          <span className="text-xs text-muted-foreground italic">
+                            No credentials
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium">
+                              {comp.active_count} Active
                             </span>
-                          )}
-                          {comp.expired_count > 0 && (
-                            <span className="px-2 py-0.5 rounded bg-destructive/15 text-destructive font-bold">
-                              {comp.expired_count} Expired
-                            </span>
-                          )}
-                        </div>
+                            {comp.expiring_count > 0 && (
+                              <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 font-semibold">
+                                {comp.expiring_count} Expiring
+                              </span>
+                            )}
+                            {comp.expired_count > 0 && (
+                              <span className="px-2 py-0.5 rounded bg-destructive/15 text-destructive font-bold">
+                                {comp.expired_count} Expired
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* Action Column */}
@@ -326,7 +419,9 @@ export const CompanyHealthTable: React.FC<CompanyHealthTableProps> = ({ companie
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleExpand(comp.company_id)}
-                          className="gap-1 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                          disabled={isOffline && comp.total_permits === 0}
+                          className="gap-1 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-40"
+                          title={isOffline && comp.total_permits === 0 ? "Cannot load permits while company is offline" : undefined}
                         >
                           {isExpanded ? (
                             <>
@@ -373,6 +468,7 @@ export const CompanyHealthTable: React.FC<CompanyHealthTableProps> = ({ companie
                                     permit={p}
                                     isArchivedMode={false}
                                     onView={(selected) => {
+                                      setSelectedCompanyDirectusUrl(comp.directus || null);
                                       setSelectedCompanyPermits([
                                         ...comp.permits,
                                         ...comp.archived_permits,
@@ -397,9 +493,15 @@ export const CompanyHealthTable: React.FC<CompanyHealthTableProps> = ({ companie
 
       <DashboardPermitPreviewDialog
         isOpen={Boolean(previewPermit)}
-        onClose={() => setPreviewPermit(null)}
+        onClose={() => {
+          setPreviewPermit(null);
+          setSelectedCompanyDirectusUrl(null);
+        }}
         permit={previewPermit}
         companyPermits={selectedCompanyPermits}
+        companyDirectusUrl={selectedCompanyDirectusUrl}
+        onSyncCompany={onSyncCompany}
+        isSyncingCompany={syncingCompanyId === previewPermit?.company_id}
       />
     </>
   );

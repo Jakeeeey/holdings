@@ -67,7 +67,10 @@ export async function POST(req: NextRequest) {
     // If this creation is part of a renewal, archive the previous permit record on server side
     if (result.success && renew_from_id) {
       try {
-        await updatePermitRecord(renew_from_id, { status: "Archived" });
+        await updatePermitRecord(renew_from_id, {
+          company_id: Number(company_id),
+          status: "Archived",
+        });
       } catch (archiveErr) {
         console.warn("Failed to archive previous permit on renewal:", archiveErr);
       }

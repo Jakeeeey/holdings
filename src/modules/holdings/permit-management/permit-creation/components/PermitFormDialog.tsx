@@ -31,6 +31,7 @@ import {
   ShieldCheck,
   Hash,
   Landmark,
+  AlertCircle,
 } from "lucide-react";
 import { PermitFileUpload } from "./PermitFileUpload";
 import { toast } from "sonner";
@@ -140,6 +141,11 @@ export const PermitFormDialog: React.FC<PermitFormDialogProps> = ({
     const errors: Record<string, string> = {};
     if (!formData.company_id) {
       errors.company_id = "Please select a company.";
+    } else {
+      const selectedComp = companies.find((c) => c.company_id === Number(formData.company_id));
+      if (selectedComp && (!selectedComp.is_directus_configured || selectedComp.connection_status === "offline")) {
+        errors.company_id = "Selected company is currently offline. Cannot create permit.";
+      }
     }
     if (!formData.permit_type_id) {
       errors.permit_type_id = "Please select a permit type.";
@@ -154,8 +160,15 @@ export const PermitFormDialog: React.FC<PermitFormDialogProps> = ({
       errors.expiry_date = "Expiration date is required.";
     }
     if (formData.issue_date && formData.expiry_date) {
-      const issueTime = new Date(formData.issue_date).getTime();
-      const expiryTime = new Date(formData.expiry_date).getTime();
+      const parseDateOnly = (dStr: string) => {
+        const parts = dStr.substring(0, 10).split("-");
+        if (parts.length === 3) {
+          return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)).getTime();
+        }
+        return new Date(dStr).getTime();
+      };
+      const issueTime = parseDateOnly(formData.issue_date);
+      const expiryTime = parseDateOnly(formData.expiry_date);
       if (!isNaN(issueTime) && !isNaN(expiryTime) && expiryTime < issueTime) {
         errors.expiry_date = "Expiration date must be on or after date issued.";
       }
@@ -170,8 +183,11 @@ export const PermitFormDialog: React.FC<PermitFormDialogProps> = ({
   const uploadFile = async (file: File): Promise<string> => {
     const uploadData = new FormData();
     uploadData.append("file", file);
+    if (formData.company_id) {
+      uploadData.append("company_id", String(formData.company_id));
+    }
 
-    const res = await fetch("/api/holdings/upload", {
+    const res = await fetch("/api/holdings/permit-management/upload", {
       method: "POST",
       body: uploadData,
     });
@@ -181,8 +197,11 @@ export const PermitFormDialog: React.FC<PermitFormDialogProps> = ({
       throw new Error(result.message || "Failed to upload file to storage.");
     }
 
-    const fileId = result.data?.id;
-    return fileId ? `/assets/${fileId}` : "/uploads/permits/default_permit.pdf";
+    return (
+      result.file_url ||
+      result.data?.id ||
+      "/uploads/permits/default_permit.pdf"
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -306,16 +325,41 @@ export const PermitFormDialog: React.FC<PermitFormDialogProps> = ({
                     <SelectValue placeholder="Select target company" />
                   </SelectTrigger>
                   <SelectContent className="border-slate-200 dark:border-slate-700 max-h-56">
-                    {companies.map((c) => (
-                      <SelectItem key={c.company_id} value={String(c.company_id)}>
-                        {c.company_name} {c.company_code ? `(${c.company_code})` : ""}
-                      </SelectItem>
-                    ))}
+                    {companies.map((c) => {
+                      const isCompOffline = !c.is_directus_configured || c.connection_status === "offline";
+                      return (
+                        <SelectItem key={c.company_id} value={String(c.company_id)}>
+                          <span className="flex items-center gap-2">
+                            <span>{c.company_name} {c.company_code ? `(${c.company_code})` : ""}</span>
+                            {isCompOffline && (
+                              <span className="text-[10px] text-rose-500 font-mono font-normal">
+                                [Offline]
+                              </span>
+                            )}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
                 {formErrors.company_id && (
                   <p className="text-destructive text-xs font-medium">{formErrors.company_id}</p>
                 )}
+                {(() => {
+                  const currentComp = companies.find((c) => c.company_id === Number(formData.company_id));
+                  const isCurrentOffline = currentComp && (!currentComp.is_directus_configured || currentComp.connection_status === "offline");
+                  if (!isCurrentOffline) return null;
+
+                  return (
+                    <div className="p-2 rounded-md bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 text-[11px] text-rose-700 dark:text-rose-300 flex items-start gap-1.5 mt-1">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500 mt-0.5" />
+                      <div>
+                        <strong className="font-semibold">Company API is Offline:</strong>{" "}
+                        {currentComp?.connection_error || "Instance is unreachable. Records cannot be written until connection is restored."}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Permit Type Selection */}
@@ -535,23 +579,30 @@ export const PermitFormDialog: React.FC<PermitFormDialogProps> = ({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              form="permit-form"
-              size="sm"
-              disabled={isSubmitting || isUploading}
-              className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md hover:shadow-primary/25 active:scale-[0.98] transition-all cursor-pointer"
-            >
-              {isUploading
-                ? "Uploading Document..."
-                : isSubmitting
-                ? "Submitting..."
-                : isRenewalMode
-                ? "Complete Renewal"
-                : editRecord
-                ? "Save Changes"
-                : "Register Permit"}
-            </Button>
+            {(() => {
+              const currentComp = companies.find((c) => c.company_id === Number(formData.company_id));
+              const isCompOffline = currentComp && (!currentComp.is_directus_configured || currentComp.connection_status === "offline");
+
+              return (
+                <Button
+                  type="submit"
+                  form="permit-form"
+                  size="sm"
+                  disabled={isSubmitting || isUploading || isCompOffline}
+                  className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md hover:shadow-primary/25 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUploading
+                    ? "Uploading Document..."
+                    : isSubmitting
+                    ? "Submitting..."
+                    : isRenewalMode
+                    ? "Complete Renewal"
+                    : editRecord
+                    ? "Save Changes"
+                    : "Register Permit"}
+                </Button>
+              );
+            })()}
           </div>
         </DialogFooter>
       </DialogContent>

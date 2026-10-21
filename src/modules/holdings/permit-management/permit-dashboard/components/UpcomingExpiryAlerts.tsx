@@ -19,11 +19,15 @@ import { DashboardPermitPreviewDialog } from "./DashboardPermitPreviewDialog";
 interface UpcomingExpiryAlertsProps {
   urgentPermits: DashboardPermitItem[];
   allCompanyPermits?: DashboardPermitItem[];
+  onSyncCompany?: (companyId: number) => Promise<boolean>;
+  syncingCompanyId?: number | null;
 }
 
 export const UpcomingExpiryAlerts: React.FC<UpcomingExpiryAlertsProps> = ({
   urgentPermits,
   allCompanyPermits = [],
+  onSyncCompany,
+  syncingCompanyId,
 }) => {
   const [previewPermit, setPreviewPermit] = useState<DashboardPermitItem | null>(null);
   const [failedUrls, setFailedUrls] = useState<Record<string, boolean>>({});
@@ -45,6 +49,9 @@ export const UpcomingExpiryAlerts: React.FC<UpcomingExpiryAlertsProps> = ({
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
     if (url.startsWith("/assets/")) {
       return `${baseUrl}${url}`;
+    }
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(url.trim())) {
+      return `${baseUrl}/assets/${url.trim()}`;
     }
     return url;
   };
@@ -143,7 +150,10 @@ export const UpcomingExpiryAlerts: React.FC<UpcomingExpiryAlertsProps> = ({
             const fileUrl = getAbsoluteFileUrl(permit.file_url);
             const isPdf = /\.pdf$/i.test(permit.file_url || "");
             const isExplicitImage = /\.(png|jpe?g|webp|gif|svg)$/i.test(permit.file_url || "");
-            const isDirectusAsset = Boolean(permit.file_url && permit.file_url.includes("/assets/"));
+            const isUuid = Boolean(
+              permit.file_url && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(permit.file_url.trim())
+            );
+            const isDirectusAsset = Boolean(permit.file_url && (permit.file_url.includes("/assets/") || isUuid));
             const hasFailed = Boolean(failedUrls[permit.id]);
             const isImage = (isExplicitImage || isDirectusAsset) && !isPdf && !hasFailed;
 
@@ -294,6 +304,8 @@ export const UpcomingExpiryAlerts: React.FC<UpcomingExpiryAlertsProps> = ({
         onClose={() => setPreviewPermit(null)}
         permit={previewPermit}
         companyPermits={allCompanyPermits}
+        onSyncCompany={onSyncCompany}
+        isSyncingCompany={syncingCompanyId === previewPermit?.company_id}
       />
     </>
   );

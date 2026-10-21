@@ -17,7 +17,9 @@ interface PermitDashboardHeaderProps {
   healthFilter: string;
   onHealthFilterChange: (value: string) => void;
   isLoading: boolean;
+  isSyncing?: boolean;
   onRefresh: () => void;
+  onSyncCompanies?: () => void;
 }
 
 export const PermitDashboardHeader: React.FC<PermitDashboardHeaderProps> = ({
@@ -26,7 +28,9 @@ export const PermitDashboardHeader: React.FC<PermitDashboardHeaderProps> = ({
   healthFilter,
   onHealthFilterChange,
   isLoading,
+  isSyncing,
   onRefresh,
+  onSyncCompanies,
 }) => {
   return (
     <div className="flex flex-col gap-4 pb-4 border-b border-border">
@@ -44,7 +48,22 @@ export const PermitDashboardHeader: React.FC<PermitDashboardHeaderProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          {onSyncCompanies && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onSyncCompanies}
+              disabled={isSyncing}
+              className="gap-2 text-xs font-semibold rounded-lg border-slate-300 dark:border-slate-700 bg-background hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-all cursor-pointer shadow-2xs"
+              title="Synchronize permit requirements with all company Directus instances"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin text-primary" : "text-muted-foreground"}`} />
+              <span>{isSyncing ? "Syncing..." : "Sync Companies"}</span>
+            </Button>
+          )}
+
           <Button
             variant="outline"
             size="sm"

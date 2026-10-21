@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Search, FileCheck2, ChevronDown, SlidersHorizontal } from "lucide-react";
+import { Search, FileCheck2, ChevronDown, SlidersHorizontal, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,7 +23,9 @@ interface PermitCreationHeaderProps {
   totalCompanies: number;
   totalPermits?: number;
   isLoading?: boolean;
+  isSyncing?: boolean;
   onRefresh?: () => void;
+  onSyncCompanies?: () => void;
   onOpenNewPermit?: () => void;
   onOpenAddPermitType?: () => void;
 }
@@ -37,6 +39,8 @@ export const PermitCreationHeader: React.FC<PermitCreationHeaderProps> = ({
   onUnselectAllTypes,
   permitTypes,
   totalCompanies,
+  isSyncing,
+  onSyncCompanies,
   onOpenAddPermitType,
 }) => {
   const allCount = permitTypes.length;
@@ -165,6 +169,22 @@ export const PermitCreationHeader: React.FC<PermitCreationHeaderProps> = ({
             </PopoverContent>
           </Popover>
         </div>
+
+        {/* Sync Companies Button */}
+        {onSyncCompanies && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onSyncCompanies}
+            disabled={isSyncing}
+            className="h-9 px-3.5 gap-2 text-xs font-semibold rounded-lg border-slate-300 dark:border-slate-700 bg-background hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-all cursor-pointer shadow-2xs"
+            title="Synchronize permit requirements with all company Directus instances"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin text-primary" : "text-muted-foreground"}`} />
+            <span>{isSyncing ? "Syncing..." : "Sync Companies"}</span>
+          </Button>
+        )}
 
         {/* Primary Action Button: Manage Permit Types */}
         {onOpenAddPermitType && (

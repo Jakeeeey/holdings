@@ -83,10 +83,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: errorMsg }, { status: response.status });
     }
 
+    // Broadcast/Synchronize to all configured company instances
+    let broadcastReport = null;
+    try {
+      const { broadcastPermitTypeToAllCompanies } = await import(
+        "@/modules/holdings/permit-management/permit-creation/services/permit-creation.service"
+      );
+      broadcastReport = await broadcastPermitTypeToAllCompanies(trimmedName, is_active);
+    } catch (broadcastErr) {
+      console.warn("Failed to broadcast permit type to companies:", broadcastErr);
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Permit type created successfully.",
+      message: broadcastReport
+        ? `Permit type created and synchronized to ${broadcastReport.syncedCount} of ${broadcastReport.totalConfigured} company instances.`
+        : "Permit type created successfully.",
       data: result.data,
+      broadcastReport,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal server error";

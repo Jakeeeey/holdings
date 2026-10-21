@@ -95,7 +95,8 @@ export const PermitFileUpload: React.FC<PermitFileUploadProps> = ({
   };
 
   const isExistingValue = !selectedFile && Boolean(value && value !== "/uploads/permits/default_permit.pdf");
-  const isDirectusAsset = isExistingValue && (value.startsWith("/assets/") || value.includes("/assets/"));
+  const isUuid = Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim()));
+  const isDirectusAsset = isExistingValue && (value.startsWith("/assets/") || value.includes("/assets/") || isUuid);
   const isImage =
     selectedFile?.type.startsWith("image/") ||
     (isExistingValue && (/\.(jpg|jpeg|png|webp)$/i.test(value) || (isDirectusAsset && !value.toLowerCase().includes(".pdf"))));

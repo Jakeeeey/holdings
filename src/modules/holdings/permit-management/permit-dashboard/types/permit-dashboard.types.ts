@@ -29,6 +29,10 @@ export interface CompanyHealthRecord {
   company_logo?: string | null;
   company_address?: string | null;
   company_tin?: string | null;
+  directus?: string | null;
+  is_directus_configured?: boolean;
+  connection_status?: "online" | "offline" | "unconfigured" | "unknown";
+  connection_error?: string | null;
   total_permits: number;
   active_count: number;
   expiring_count: number;
@@ -41,6 +45,8 @@ export interface CompanyHealthRecord {
 
 export interface PermitDashboardSummary {
   total_companies: number;
+  online_companies_count?: number;
+  offline_companies_count?: number;
   total_permits: number;
   active_count: number;
   expiring_count: number;

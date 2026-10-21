@@ -19,25 +19,33 @@ const getHeaders = () => {
   return headers;
 };
 
+const getCompanyHeaders = (token?: string | null): HeadersInit => {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
+const normalizeTypeName = (str?: string | null): string => {
+  if (!str) return "";
+  return str.toLowerCase().replace(/['"`\s\-_.]/g, "").trim();
+};
+
 export const fetchDashboardData = async (): Promise<PermitDashboardData> => {
-  const permitEndpoint = `${API_BASE_URL}/items/permits?limit=-1&sort=-id`;
-  const typesEndpoint = `${API_BASE_URL}/items/permit_types?limit=-1&sort=name`;
+  // Only query active compliance requirement permit types matching Permit Creation
+  const typesEndpoint = `${API_BASE_URL}/items/permit_types?filter[is_active][_neq]=0&limit=-1&sort=name`;
   const companiesEndpoint = `${API_BASE_URL}/items/company_list?limit=-1&sort=company_name`;
 
-  const [permitsRes, typesRes, companiesRes] = await Promise.allSettled([
-    fetch(permitEndpoint, { method: "GET", headers: getHeaders(), cache: "no-store" }),
+  const [typesRes, companiesRes] = await Promise.allSettled([
     fetch(typesEndpoint, { method: "GET", headers: getHeaders(), cache: "no-store" }),
     fetch(companiesEndpoint, { method: "GET", headers: getHeaders(), cache: "no-store" }),
   ]);
 
-  let rawPermits: Array<Record<string, unknown>> = [];
   let rawTypes: Array<Record<string, unknown>> = [];
   let rawCompanies: Array<Record<string, unknown>> = [];
-
-  if (permitsRes.status === "fulfilled" && permitsRes.value.ok) {
-    const json = await permitsRes.value.json();
-    rawPermits = json.data || [];
-  }
 
   if (typesRes.status === "fulfilled" && typesRes.value.ok) {
     const json = await typesRes.value.json();
@@ -49,13 +57,123 @@ export const fetchDashboardData = async (): Promise<PermitDashboardData> => {
     rawCompanies = json.data || [];
   }
 
+  // Pre-index master permit types by normalized name for robust cross-tenant mapping
+  const masterTypeByName = new Map<string, string>();
+  for (const t of rawTypes) {
+    const tName = String(t.name || t.permit_type_name || "");
+    const normalized = normalizeTypeName(tName);
+    const tId = String(t.id);
+    if (normalized) masterTypeByName.set(normalized, tId);
+  }
+
+  // Parallel fetch permits directly from each company's Directus
+  const rawPermits: Array<Record<string, unknown>> = [];
+  const companyErrorMap = new Map<number, string>();
+  const companyStatusMap = new Map<number, "online" | "offline" | "unconfigured">();
+
+  await Promise.allSettled(
+    rawCompanies.map(async (c) => {
+      const rawDirectus = (c.directus as string) || null;
+      const rawToken = (c.directus_token as string) || null;
+      const isConfigured = Boolean(rawDirectus && rawDirectus.trim() && rawToken && rawToken.trim());
+      const companyId = Number(c.company_id || c.id);
+
+      if (!isConfigured || !rawDirectus || !rawToken) {
+        companyStatusMap.set(companyId, "unconfigured");
+        companyErrorMap.set(companyId, "Directus URL or token missing");
+        return;
+      }
+
+      try {
+        const compBase = rawDirectus.trim().endsWith("/") ? rawDirectus.trim().slice(0, -1) : rawDirectus.trim();
+        const compHeaders = getCompanyHeaders(rawToken);
+
+        // Fetch local types for mapping
+        const compTypesRes = await fetch(`${compBase}/items/permit_types?limit=-1`, {
+          headers: compHeaders,
+          signal: AbortSignal.timeout(4000),
+          cache: "no-store",
+        });
+
+        const compTypeMap = new Map<number | string, string>();
+        if (compTypesRes.ok) {
+          const compTypesData = await compTypesRes.json();
+          for (const ct of compTypesData.data || []) {
+            const ctName = String(ct.name || ct.permit_type_name || "");
+            const normalized = normalizeTypeName(ctName);
+            compTypeMap.set(ct.id, normalized);
+            compTypeMap.set(String(ct.id), normalized);
+          }
+        }
+
+        const compPermitsRes = await fetch(
+          `${compBase}/items/permits?filter[company_id][_eq]=${companyId}&limit=-1&sort=-id`,
+          {
+            headers: compHeaders,
+            signal: AbortSignal.timeout(5000),
+            cache: "no-store",
+          }
+        );
+
+        if (compPermitsRes.ok) {
+          companyStatusMap.set(companyId, "online");
+          const compPermitsData = await compPermitsRes.json();
+          for (const item of compPermitsData.data || []) {
+            if (item.company_id && Number(item.company_id) !== companyId) {
+              continue;
+            }
+
+            const localTypeName = compTypeMap.get(item.permit_type_id) || "";
+            const matchedMasterTypeId = localTypeName ? masterTypeByName.get(localTypeName) : null;
+
+            rawPermits.push({
+              ...item,
+              company_id: companyId,
+              permit_type_id: matchedMasterTypeId || item.permit_type_id,
+            });
+          }
+        } else {
+          companyStatusMap.set(companyId, "offline");
+          const errorText = compPermitsRes.status === 403
+            ? "HTTP 403: Forbidden (Role permissions required for permits collection)"
+            : `HTTP ${compPermitsRes.status}: ${compPermitsRes.statusText || "Instance error"}`;
+          companyErrorMap.set(companyId, errorText);
+        }
+      } catch (err) {
+        companyStatusMap.set(companyId, "offline");
+        const isTimeout = err instanceof Error && err.name === "TimeoutError";
+        companyErrorMap.set(
+          companyId,
+          isTimeout ? "Connection Timeout (Instance offline/unreachable)" : "Network/Host unreachable"
+        );
+      }
+    })
+  );
+
+  // Fallback to Master permits if all company instances were offline or empty
+  if (rawPermits.length === 0) {
+    try {
+      const backupPermitsRes = await fetch(`${API_BASE_URL}/items/permits?limit=-1&sort=-id`, {
+        headers: getHeaders(),
+        cache: "no-store",
+      });
+      if (backupPermitsRes.ok) {
+        const backupJson = await backupPermitsRes.json();
+        rawPermits.push(...(backupJson.data || []));
+      }
+    } catch (fallbackErr) {
+      console.warn("Dashboard Master permits fallback fetch failed:", fallbackErr);
+    }
+  }
+
   // Maps for fast lookup
-  const companyMap = new Map<number, { name: string; code: string }>();
+  const companyMap = new Map<number, { name: string; code: string; directus?: string | null }>();
   for (const c of rawCompanies) {
     const id = Number(c.company_id || c.id);
     companyMap.set(id, {
       name: String(c.company_name || c.name || "Unknown Company"),
       code: String(c.company_code || c.code || ""),
+      directus: (c.directus as string) || null,
     });
   }
 
@@ -178,11 +296,17 @@ export const fetchDashboardData = async (): Promise<PermitDashboardData> => {
     const rawCompPermits = companyActivePermitsMap.get(compId) || [];
     const directArchived = companyArchivedPermitsMap.get(compId) || [];
 
-    // Sort by id descending (newest created record first) to match Permit Creation precedence
+    // Sort by expiration date descending, tie-breaking by id descending
+    // This strictly matches Permit Creation and HRM Permit logic
     const sortedCompPermits = [...rawCompPermits].sort((a, b) => {
-      const idA = Number(a.id) || 0;
-      const idB = Number(b.id) || 0;
-      return idB - idA;
+      const dateA = a.expiry_date || a.expiration_date || "";
+      const dateB = b.expiry_date || b.expiration_date || "";
+      if (dateA && dateB && dateA !== dateB) {
+        return dateB.localeCompare(dateA);
+      }
+      if (dateA && !dateB) return -1;
+      if (!dateA && dateB) return 1;
+      return (Number(b.id) || 0) - (Number(a.id) || 0);
     });
 
     // Separate latest active per permit type vs historical/superseded permits
@@ -231,6 +355,12 @@ export const fetchDashboardData = async (): Promise<PermitDashboardData> => {
     const compliance =
       totalCurrent > 0 ? Math.round(((activeCount + expiringCount) / totalCurrent) * 100) : 0;
 
+    const rawDirectus = (c.directus as string) || null;
+    const rawToken = (c.directus_token as string) || null;
+    const isConfigured = Boolean(rawDirectus && rawDirectus.trim() && rawToken && rawToken.trim());
+    const connectionStatus = companyStatusMap.get(compId) || (isConfigured ? "offline" : "unconfigured");
+    const connectionError = companyErrorMap.get(compId) || null;
+
     return {
       company_id: compId,
       company_name: compName,
@@ -238,6 +368,10 @@ export const fetchDashboardData = async (): Promise<PermitDashboardData> => {
       company_logo: (c.company_logo as string) || null,
       company_address: (c.company_address as string) || null,
       company_tin: (c.company_tin as string) || null,
+      directus: rawDirectus,
+      is_directus_configured: isConfigured,
+      connection_status: connectionStatus,
+      connection_error: connectionError,
       total_permits: totalCurrent,
       active_count: activeCount,
       expiring_count: expiringCount,
@@ -263,24 +397,43 @@ export const fetchDashboardData = async (): Promise<PermitDashboardData> => {
     .filter((p) => p.health_level === "critical" || p.health_level === "warning")
     .sort((a, b) => a.days_remaining - b.days_remaining);
 
-  // Overall combined archive list (direct archived + superseded)
-  const fullArchivedList = [
-    ...archivedPermitsList,
-    ...companiesHealth.flatMap((c) => c.archived_permits.filter((ap) => ap.status !== "Archived")),
-  ].sort((a, b) => {
+  // Overall combined archive list (direct archived + superseded) with strict ID-based deduplication
+  const archivedMap = new Map<string, DashboardPermitItem>();
+  for (const ap of archivedPermitsList) {
+    archivedMap.set(`${ap.company_id}_${ap.id}`, ap);
+  }
+  for (const comp of companiesHealth) {
+    for (const ap of comp.archived_permits) {
+      const key = `${ap.company_id}_${ap.id}`;
+      if (!archivedMap.has(key)) {
+        archivedMap.set(key, ap);
+      }
+    }
+  }
+
+  const fullArchivedList = Array.from(archivedMap.values()).sort((a, b) => {
     const dateA = new Date(a.expiration_date || 0).getTime();
     const dateB = new Date(b.expiration_date || 0).getTime();
     return dateB - dateA;
   });
 
+  const onlineCompaniesCount = companiesHealth.filter(
+    (c) => c.connection_status === "online"
+  ).length;
+  const offlineCompaniesCount = companiesHealth.filter(
+    (c) => c.connection_status === "offline"
+  ).length;
+
   const totalMonitoredCount = activeMonitoredPermits.length;
   const overallComplianceRate =
     totalMonitoredCount > 0
       ? Math.round(((totalActive + totalExpiring) / totalMonitoredCount) * 100)
-      : 100;
+      : onlineCompaniesCount > 0 ? 100 : 0;
 
   const summary: PermitDashboardSummary = {
     total_companies: rawCompanies.length,
+    online_companies_count: onlineCompaniesCount,
+    offline_companies_count: offlineCompaniesCount,
     total_permits: totalMonitoredCount,
     active_count: totalActive,
     expiring_count: totalExpiring,

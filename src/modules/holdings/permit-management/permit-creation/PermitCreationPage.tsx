@@ -7,6 +7,7 @@ import { PermitMatrixTable } from "./components/PermitMatrixTable";
 import { PermitFormDialog } from "./components/PermitFormDialog";
 import { PermitDetailDialog } from "./components/PermitDetailDialog";
 import { ManagePermitTypesDialog } from "./components/ManagePermitTypesDialog";
+import { SyncCenterDialog } from "./components/SyncCenterDialog";
 import {
   PermitCompany,
   PermitTypeItem,
@@ -24,6 +25,7 @@ export default function PermitCreationPage() {
     permits,
     permitMap,
     isLoading,
+    isSyncing,
     isSubmitting,
     searchTerm,
     setSearchTerm,
@@ -32,9 +34,10 @@ export default function PermitCreationPage() {
     selectAllTypes,
     unselectAllTypes,
     refetch,
+    syncSinglePermit,
+    syncCompanyPermits,
     addPermit,
     updatePermit,
-    deletePermit,
     createPermitType,
     updatePermitType,
   } = usePermitCreation();
@@ -48,6 +51,9 @@ export default function PermitCreationPage() {
 
   // State for Add Permit Type modal
   const [isAddTypeOpen, setIsAddTypeOpen] = useState(false);
+
+  // State for Sync Center modal
+  const [isSyncCenterOpen, setIsSyncCenterOpen] = useState(false);
 
   // State for View Details modal
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -146,7 +152,9 @@ export default function PermitCreationPage() {
           totalCompanies={totalCompanies}
           totalPermits={permits.length}
           isLoading={isLoading}
+          isSyncing={isSyncing}
           onRefresh={refetch}
+          onSyncCompanies={() => setIsSyncCenterOpen(true)}
           onOpenNewPermit={handleOpenGlobalNewPermit}
           onOpenAddPermitType={() => setIsAddTypeOpen(true)}
         />
@@ -162,8 +170,18 @@ export default function PermitCreationPage() {
           onAddPermitForCell={handleAddPermitForCell}
           onViewPermitDetails={handleViewPermitDetails}
           onOpenAddPermitType={() => setIsAddTypeOpen(true)}
+          onSyncCompanyPermits={syncCompanyPermits}
         />
       </div>
+
+      {/* Sync Center Dialog */}
+      <SyncCenterDialog
+        isOpen={isSyncCenterOpen}
+        onClose={() => setIsSyncCenterOpen(false)}
+        companies={companies}
+        permits={permits}
+        onFinishSync={refetch}
+      />
 
       {/* Manage Permit Types Dialog */}
       <ManagePermitTypesDialog
@@ -174,6 +192,10 @@ export default function PermitCreationPage() {
         onCreateType={createPermitType}
         onUpdateType={updatePermitType}
         isSubmitting={isSubmitting}
+        onTriggerSyncCenter={() => {
+          setIsAddTypeOpen(false);
+          setIsSyncCenterOpen(true);
+        }}
       />
 
       {/* Add / Edit / Renew Dialog */}
@@ -197,10 +219,19 @@ export default function PermitCreationPage() {
         permit={selectedPermitForDetail}
         company={selectedCompanyForDetail}
         permitType={selectedPermitTypeForDetail}
+        relatedPermits={
+          selectedPermitForDetail
+            ? permits.filter(
+                (p) =>
+                  String(p.permit_type_id) === String(selectedPermitForDetail.permit_type_id) &&
+                  String(p.company_id) === String(selectedPermitForDetail.company_id)
+              )
+            : []
+        }
         onEdit={handleEditFromDetail}
         onRenew={handleRenewFromDetail}
-        onDelete={deletePermit}
-        isDeleting={isSubmitting}
+        onSyncSinglePermit={syncSinglePermit}
+        isSyncing={isSyncing}
       />
     </div>
   );

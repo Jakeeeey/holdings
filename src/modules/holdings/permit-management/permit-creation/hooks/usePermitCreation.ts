@@ -14,6 +14,7 @@ export const usePermitCreation = () => {
   const [permitTypes, setPermitTypes] = useState<PermitTypeItem[]>([]);
   const [permits, setPermits] = useState<PermitRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,11 +67,25 @@ export const usePermitCreation = () => {
   }, [permitTypes]);
 
   // Fast permit lookup map by `${company_id}_${permit_type_id}`
-  // Excludes or deprioritizes Archived permits so the active/renewed permit is displayed in the matrix
+  // Excludes Archived permits and deterministically prioritizes the newest active/renewed record
   const permitMap = useMemo(() => {
     const map = new Map<string, PermitRecord>();
-    for (const p of permits) {
-      if (p.status === "Archived") continue; // Archived records are preserved in audit history, but not shown as matrix cell
+    
+    // Sort permits: newest expiry_date first, tie-break by highest ID
+    const sorted = [...permits]
+      .filter((p) => p.status !== "Archived")
+      .sort((a, b) => {
+        const dateA = a.expiry_date || a.expiration_date || "";
+        const dateB = b.expiry_date || b.expiration_date || "";
+        if (dateA && dateB && dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        if (dateA && !dateB) return -1;
+        if (!dateA && dateB) return 1;
+        return Number(b.id) - Number(a.id);
+      });
+
+    for (const p of sorted) {
       const key = `${p.company_id}_${p.permit_type_id}`;
       if (!map.has(key)) {
         map.set(key, p);
@@ -112,6 +127,102 @@ export const usePermitCreation = () => {
     setSelectedTypeIds([]);
   }, []);
 
+  const syncCompanies = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch("/api/holdings/permit-management/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync-all-types" }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Failed to synchronize company instances.");
+      }
+      toast.success(result.message || "Companies synchronized successfully!");
+      await fetchData();
+      return true;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Sync operation failed.";
+      toast.error(msg);
+      return false;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const syncSinglePermit = async (permitId: number | string) => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch("/api/holdings/permit-management/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync-single-permit", permit_id: permitId }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Failed to push permit to company Directus.");
+      }
+      toast.success(result.message || "Permit successfully pushed to company Directus!");
+      await fetchData();
+      return true;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Permit sync failed.";
+      toast.error(msg);
+      return false;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const syncCompanyPermits = async (companyId: number) => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch("/api/holdings/permit-management/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync-company-permits", company_id: companyId }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Failed to sync company permits.");
+      }
+      toast.success(result.message || "Company permits synchronized successfully!");
+      await fetchData();
+      return true;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Sync failed.";
+      toast.error(msg);
+      return false;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const syncAllPermits = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch("/api/holdings/permit-management/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync-all-permits" }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Failed to sync all permits.");
+      }
+      toast.success(result.message || "All permits synchronized successfully!");
+      await fetchData();
+      return true;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Global sync failed.";
+      toast.error(msg);
+      return false;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const addPermit = async (payload: PermitFormData) => {
     setIsSubmitting(true);
     try {
@@ -124,7 +235,17 @@ export const usePermitCreation = () => {
       if (!res.ok || !result.success) {
         throw new Error(result.message || "Failed to add permit.");
       }
-      toast.success("Permit record added successfully!");
+
+      if (result.companySync?.status === "success") {
+        toast.success("Permit saved in Company Directus and Central Backup!");
+      } else if (result.companySync?.status === "failed") {
+        toast.warning(
+          `Permit saved in Central Backup. Note: Company sync failed (${result.companySync.message})`
+        );
+      } else {
+        toast.success("Permit record added successfully!");
+      }
+
       await fetchData();
       return true;
     } catch (err: unknown) {
@@ -160,10 +281,13 @@ export const usePermitCreation = () => {
     }
   };
 
-  const deletePermit = async (id: number | string) => {
+  const deletePermit = async (id: number | string, companyId?: number | string | null) => {
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/holdings/permit-management/permit-creation/${id}`, {
+      const url = companyId
+        ? `/api/holdings/permit-management/permit-creation/${id}?company_id=${companyId}`
+        : `/api/holdings/permit-management/permit-creation/${id}`;
+      const res = await fetch(url, {
         method: "DELETE",
       });
       const result = await res.json();
@@ -182,7 +306,11 @@ export const usePermitCreation = () => {
     }
   };
 
-  const createPermitType = async (name: string, isActive: boolean = true) => {
+  const createPermitType = async (
+    name: string,
+    isActive: boolean = true,
+    options?: { silent?: boolean }
+  ) => {
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/holdings/permit-management/permit-types", {
@@ -194,7 +322,9 @@ export const usePermitCreation = () => {
       if (!res.ok || !result.success) {
         throw new Error(result.message || "Failed to create permit type.");
       }
-      toast.success("Permit type created successfully!");
+      if (!options?.silent) {
+        toast.success("Permit type created successfully!");
+      }
       
       // Auto-include the new type in selected columns
       if (result.data?.id) {
@@ -212,7 +342,11 @@ export const usePermitCreation = () => {
     }
   };
 
-  const updatePermitType = async (id: number | string, data: { name?: string; is_active?: boolean | number }) => {
+  const updatePermitType = async (
+    id: number | string,
+    data: { name?: string; is_active?: boolean | number },
+    options?: { silent?: boolean }
+  ) => {
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/holdings/permit-management/permit-types/${id}`, {
@@ -224,7 +358,9 @@ export const usePermitCreation = () => {
       if (!res.ok || !result.success) {
         throw new Error(result.message || "Failed to update permit type.");
       }
-      toast.success(result.message || "Permit type updated successfully!");
+      if (!options?.silent) {
+        toast.success(result.message || "Permit type updated successfully!");
+      }
       await fetchData();
       return true;
     } catch (err: unknown) {
@@ -245,6 +381,7 @@ export const usePermitCreation = () => {
     permits,
     permitMap,
     isLoading,
+    isSyncing,
     isSubmitting,
     error,
     searchTerm,
@@ -255,6 +392,10 @@ export const usePermitCreation = () => {
     selectAllTypes,
     unselectAllTypes,
     refetch: fetchData,
+    syncCompanies,
+    syncSinglePermit,
+    syncCompanyPermits,
+    syncAllPermits,
     addPermit,
     updatePermit,
     deletePermit,

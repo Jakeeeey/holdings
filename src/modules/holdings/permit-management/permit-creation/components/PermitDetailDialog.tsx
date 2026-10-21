@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -34,19 +34,12 @@ import {
   ShieldCheck,
   FileCheck2,
   Loader2,
-  Trash2,
+  CloudUpload,
+  History,
+  Archive,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+
 import {
   PermitRecord,
   PermitCompany,
@@ -59,10 +52,11 @@ interface PermitDetailDialogProps {
   permit: PermitRecord | null;
   company: PermitCompany | null;
   permitType: PermitTypeItem | null;
+  relatedPermits?: PermitRecord[];
   onEdit: (permit: PermitRecord) => void;
   onRenew?: (permit: PermitRecord) => void;
-  onDelete: (permitId: number | string) => Promise<boolean>;
-  isDeleting: boolean;
+  onSyncSinglePermit?: (permitId: number | string) => Promise<boolean>;
+  isSyncing?: boolean;
 }
 
 const AVATAR_GRADIENTS = [
@@ -104,16 +98,18 @@ export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({
   permit,
   company,
   permitType,
+  relatedPermits = [],
   onEdit,
   onRenew,
-  onDelete,
-  isDeleting,
+  onSyncSinglePermit,
+  isSyncing = false,
 }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [isAttachmentLoading, setIsAttachmentLoading] = useState(true);
-  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  // Override: which record is currently viewed (null = original permit)
+  const [overridePermit, setOverridePermit] = useState<PermitRecord | null>(null);
 
   // Pan and Zoom States
   const [zoomScale, setZoomScale] = useState(1);
@@ -133,8 +129,48 @@ export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({
       setImageError(false);
       setIsCopied(false);
       setIsAttachmentLoading(true);
+      setOverridePermit(null);
     }
   }
+
+  // The currently displayed permit (may be a history record)
+  const activePermit = overridePermit || permit;
+  const isViewingHistoryRecord = Boolean(
+    permit && overridePermit && String(permit.id) !== String(overridePermit.id)
+  );
+
+  // Switch to a history version — resets viewer state
+  const handleSelectHistoryVersion = (p: PermitRecord) => {
+    setOverridePermit(p);
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
+    setIsDragging(false);
+    setImageError(false);
+    setIsCopied(false);
+    setIsAttachmentLoading(true);
+  };
+
+  // All permit versions for same permit_type_id + company_id, active pinned first
+  const allPermitVersions = useMemo(() => {
+    if (!permit) return [];
+    const baseId = String(permit.id);
+    const siblings = relatedPermits.filter(
+      (p) =>
+        String(p.permit_type_id) === String(permit.permit_type_id) &&
+        String(p.company_id) === String(permit.company_id)
+    );
+    const hasBase = siblings.some((p) => String(p.id) === baseId);
+    const all = hasBase ? siblings : [permit, ...siblings];
+    return [...all].sort((a, b) => {
+      const aIsActive = String(a.id) === baseId || a.status === "Active";
+      const bIsActive = String(b.id) === baseId || b.status === "Active";
+      if (aIsActive && !bIsActive) return -1;
+      if (!aIsActive && bIsActive) return 1;
+      const dateA = new Date(a.expiry_date || a.expiration_date || 0).getTime();
+      const dateB = new Date(b.expiry_date || b.expiration_date || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [permit, relatedPermits]);
 
   const handleZoomIn = () => {
     setZoomScale((prev) => Math.min(4, Math.round((prev + 0.25) * 100) / 100));
@@ -282,7 +318,8 @@ export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({
     }
   };
 
-  const status = getStatusInfo(permit.expiry_date || permit.expiration_date || "");
+  // Always compute status from original permit (for Renew rules), but display data from activePermit
+  const status = getStatusInfo(permit?.expiry_date || permit?.expiration_date || "");
   const StatusIcon = status.icon;
 
   const getAbsoluteFileUrl = (url?: string | null) => {
@@ -290,24 +327,36 @@ export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({
     if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) {
       return url;
     }
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    // If relative path, use company directus URL first if configured, else fallback to master
+    const compBase = company?.directus ? company.directus.trim().replace(/\/$/, "") : "";
+    const baseUrl = compBase || (process.env.NEXT_PUBLIC_API_BASE_URL || "");
     if (url.startsWith("/assets/")) {
       return `${baseUrl}${url}`;
+    }
+    // Directus file UUID (36 chars with hyphens) or pure asset id
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(url.trim())) {
+      return `${baseUrl}/assets/${url.trim()}`;
     }
     return url;
   };
 
-  const fileUrl = getAbsoluteFileUrl(permit.file_url);
-  const isDirectusAsset = Boolean(permit.file_url && permit.file_url.startsWith("/assets/"));
-  const isPdf = /\.pdf$/i.test(permit.file_url || "");
-  const isExplicitImage = /\.(png|jpe?g|webp|gif|svg)$/i.test(permit.file_url || "");
+  const fileUrl = getAbsoluteFileUrl(activePermit?.file_url);
+  const isUuid = Boolean(
+    activePermit?.file_url && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activePermit.file_url.trim())
+  );
+  const isDirectusAsset = Boolean(
+    activePermit?.file_url && (activePermit.file_url.includes("/assets/") || activePermit.file_url.startsWith("/assets/") || isUuid)
+  );
+  const isPdf = /\.pdf($|\?)/i.test(activePermit?.file_url || "");
+  const isExplicitImage = /\.(png|jpe?g|webp|gif|svg|bmp|ico)($|\?)/i.test(activePermit?.file_url || "");
+  const canRenderAsImage = !isPdf && (isExplicitImage || isDirectusAsset || Boolean(fileUrl));
   const displayDocumentTitle = permitType?.name || permitType?.permit_type_name
     ? `${permitType.name || permitType.permit_type_name} Certificate`
     : "Official Permit Certificate";
 
   const handleCopyPermitNumber = () => {
-    if (permit.permit_number) {
-      navigator.clipboard.writeText(permit.permit_number);
+    if (activePermit?.permit_number) {
+      navigator.clipboard.writeText(activePermit.permit_number);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     }
@@ -337,14 +386,21 @@ export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({
         <DialogHeader className="px-6 py-4 border-b border-slate-200 dark:border-slate-700/80 bg-slate-50/80 dark:bg-slate-900/90 backdrop-blur-md shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-0.5">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 flex-wrap">
                 <DialogTitle className="text-lg font-bold text-foreground">
                   Permit Information & Document Preview
                 </DialogTitle>
-                <Badge variant={status.variant} className={`text-xs gap-1.5 py-0.5 font-medium ${status.className}`}>
-                  <StatusIcon className="h-3.5 w-3.5" />
-                  {status.label}
-                </Badge>
+                {isViewingHistoryRecord ? (
+                  <Badge variant="outline" className="text-xs gap-1.5 py-0.5 font-medium bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-400">
+                    <Archive className="h-3.5 w-3.5" />
+                    Viewing Historical Record
+                  </Badge>
+                ) : (
+                  <Badge variant={status.variant} className={`text-xs gap-1.5 py-0.5 font-medium ${status.className}`}>
+                    <StatusIcon className="h-3.5 w-3.5" />
+                    {status.label}
+                  </Badge>
+                )}
               </div>
               <DialogDescription className="text-xs text-muted-foreground">
                 Document validity, registered details, and attached certificate preview.
@@ -485,15 +541,24 @@ export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({
                   )}
 
                   {isPdf ? (
-                    <iframe
-                      src={`${fileUrl}#toolbar=0&navpanes=0`}
-                      title="Permit PDF Preview"
-                      onLoad={() => setIsAttachmentLoading(false)}
-                      className={`w-full h-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white shadow-xs transition-opacity duration-200 ${
+                    <div
+                      className={`h-full w-full flex items-center justify-center transition-opacity duration-200 ${
                         isAttachmentLoading ? "opacity-0" : "opacity-100"
                       }`}
-                    />
-                  ) : (isExplicitImage || isDirectusAsset) && !imageError ? (
+                      style={{
+                        transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomScale})`,
+                        transformOrigin: "center center",
+                        transition: isDragging ? "none" : "transform 150ms ease-out",
+                      }}
+                    >
+                      <iframe
+                        src={`${fileUrl}#toolbar=0&navpanes=0`}
+                        title="Permit PDF Preview"
+                        onLoad={() => setIsAttachmentLoading(false)}
+                        className="w-full h-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white shadow-xs"
+                      />
+                    </div>
+                  ) : canRenderAsImage && !imageError ? (
                     <div
                       className={`h-full w-full flex items-center justify-center pointer-events-none transition-opacity duration-200 ${
                         isAttachmentLoading ? "opacity-0" : "opacity-100"
@@ -517,26 +582,35 @@ export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({
                       />
                     </div>
                   ) : (
-                    <object
-                      data={fileUrl}
-                      type="application/pdf"
-                      onLoad={() => setIsAttachmentLoading(false)}
-                      className={`w-full h-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white ${
+                    <div
+                      className={`h-full w-full flex items-center justify-center transition-opacity duration-200 ${
                         isAttachmentLoading ? "opacity-0" : "opacity-100"
                       }`}
+                      style={{
+                        transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomScale})`,
+                        transformOrigin: "center center",
+                        transition: isDragging ? "none" : "transform 150ms ease-out",
+                      }}
                     >
-                      <div className="flex flex-col items-center justify-center h-full p-6 text-center text-muted-foreground">
-                        <FileQuestion className="h-10 w-10 text-muted-foreground/50 mb-2" />
-                        <p className="text-xs font-medium text-foreground">Preview not directly embeddable</p>
-                        <p className="text-[11px] mt-1 mb-3">You can view or download the file directly.</p>
-                        <Button size="sm" variant="outline" asChild className="h-8 text-xs border-slate-300 dark:border-slate-600">
-                          <a href={fileUrl} target="_blank" rel="noreferrer">
-                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                            Open Document
-                          </a>
-                        </Button>
-                      </div>
-                    </object>
+                      <object
+                        data={fileUrl}
+                        type="application/pdf"
+                        onLoad={() => setIsAttachmentLoading(false)}
+                        className="w-full h-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white"
+                      >
+                        <div className="flex flex-col items-center justify-center h-full p-6 text-center text-muted-foreground">
+                          <FileQuestion className="h-10 w-10 text-muted-foreground/50 mb-2" />
+                          <p className="text-xs font-medium text-foreground">Preview not directly embeddable</p>
+                          <p className="text-[11px] mt-1 mb-3">You can view or download the file directly.</p>
+                          <Button size="sm" variant="outline" asChild className="h-8 text-xs border-slate-300 dark:border-slate-600">
+                            <a href={fileUrl} target="_blank" rel="noreferrer">
+                              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                              Open Document
+                            </a>
+                          </Button>
+                        </div>
+                      </object>
+                    </div>
                   )}
                 </>
               ) : (
@@ -547,7 +621,7 @@ export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({
                 </div>
               )}
 
-              {(isExplicitImage || isDirectusAsset) && !imageError && (
+              {fileUrl && (
                 <div className="absolute bottom-3 left-3 bg-background/90 dark:bg-slate-900/90 backdrop-blur-xs px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-600 text-[10px] text-muted-foreground font-medium flex items-center gap-1.5 pointer-events-none shadow-sm">
                   <Move className="h-3 w-3 text-primary" />
                   <span>Drag to pan • Scroll or Double-click to zoom</span>
@@ -557,8 +631,8 @@ export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({
           </div>
 
           {/* RIGHT COLUMN: Rich Permit Information & Compliance Status */}
-          <div className="md:col-span-4 p-5 sm:p-6 overflow-y-auto space-y-4 flex flex-col justify-between h-full bg-background dark:bg-slate-900/40">
-            <div className="space-y-4">
+          <div className="md:col-span-4 flex flex-col h-full min-h-0 overflow-hidden bg-background dark:bg-slate-900/40">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               {/* 1. Company Card with Logo & Identifiers */}
               <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 flex items-center gap-3.5 shadow-xs">
                 {companyLogoUrl && !logoError ? (
@@ -644,7 +718,7 @@ export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({
                   <div>
                     <span className="text-[11px] text-muted-foreground font-medium">Permit Number</span>
                     <p className="font-mono font-bold text-xs text-foreground mt-0.5">
-                      {permit.permit_number}
+                      {activePermit?.permit_number}
                     </p>
                   </div>
                   <Button
@@ -677,7 +751,7 @@ export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({
                     <span className="font-medium">Date Issued</span>
                   </div>
                   <p className="font-semibold text-foreground text-xs">
-                    {formatDate(permit.issue_date || permit.issued_date)}
+                    {formatDate(activePermit?.issue_date || activePermit?.issued_date)}
                   </p>
                 </div>
 
@@ -687,7 +761,7 @@ export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({
                     <span className="font-medium">Expiration Date</span>
                   </div>
                   <p className="font-semibold text-foreground text-xs">
-                    {formatDate(permit.expiry_date || permit.expiration_date)}
+                    {formatDate(activePermit?.expiry_date || activePermit?.expiration_date)}
                   </p>
                 </div>
               </div>
@@ -699,112 +773,141 @@ export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({
                   <span className="font-medium">Issuing Agency / Authority</span>
                 </div>
                 <p className="font-medium text-foreground text-xs">
-                  {permit.issuing_agency || "Not specified"}
+                  {activePermit?.issuing_agency || "Not specified"}
                 </p>
               </div>
 
-              {/* 6. Remarks / Notes */}
-              {(permit.notes || permit.remarks) && (
-                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-card dark:bg-slate-900/90 shadow-xs">
-                  <p className="text-xs text-muted-foreground mb-1 font-medium">Remarks / Processing Notes</p>
-                  <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
-                    {permit.notes || permit.remarks}
-                  </p>
+              {/* 6. Remarks / Notes (Always shown) */}
+              <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-card dark:bg-slate-900/90 shadow-xs">
+                <p className="text-xs text-muted-foreground mb-1 font-medium">Remarks / Processing Notes</p>
+                <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+                  {activePermit?.notes || activePermit?.remarks || "No remarks or notes provided."}
+                </p>
+              </div>
+
+              {/* 7. Renewal History */}
+              <div className="pt-1">
+                <div className="flex items-center gap-1.5 mb-2 px-0.5">
+                  <History className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-bold text-foreground">
+                    Renewal History ({allPermitVersions.length})
+                  </span>
                 </div>
-              )}
+
+                {allPermitVersions.length > 0 ? (
+                  <div className="space-y-2">
+                    {allPermitVersions.map((hist) => {
+                      const isSelected = String(activePermit?.id) === String(hist.id);
+                      const isHistActive = String(hist.id) === String(permit?.id);
+                      return (
+                        <div
+                          key={hist.id}
+                          onClick={() => handleSelectHistoryVersion(hist)}
+                          className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                            isSelected
+                              ? "border-primary bg-primary/[0.06] dark:bg-primary/[0.12] ring-1 ring-primary shadow-xs"
+                              : "border-slate-200 dark:border-slate-800 bg-card hover:bg-muted/40 hover:border-slate-300 dark:hover:border-slate-700 shadow-2xs"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <p className="font-mono font-bold text-xs text-foreground truncate">
+                              {hist.permit_number}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              Exp: {formatDate(hist.expiry_date || hist.expiration_date)}
+                            </p>
+                          </div>
+                          <div className="shrink-0">
+                            {isHistActive ? (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] font-semibold px-2 py-0.5 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+                              >
+                                Current Active
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] font-semibold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-muted-foreground border-slate-300 dark:border-slate-700"
+                              >
+                                Archived
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-muted/20 text-center">
+                    <p className="text-xs text-muted-foreground">No previous renewals on record.</p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Structured Bottom Action Bar */}
-            <div className="pt-3.5 border-t border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-2 shrink-0">
-              {/* Left Action: Delete */}
-              <div>
-                {permit.id ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={isDeleting}
-                    onClick={() => setIsConfirmDeleteOpen(true)}
-                    className="h-8 px-2.5 text-xs gap-1.5 text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span>Delete</span>
-                  </Button>
-                ) : null}
-              </div>
-
-              {/* Right Actions */}
-              <div className="flex items-center gap-2">
-                {status.canRenew && onRenew && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => {
-                      onRenew(permit);
-                      onClose();
-                    }}
-                    className="h-8 px-3.5 text-xs gap-1.5 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all active:scale-[0.98] cursor-pointer"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    <span>Renew Permit</span>
-                  </Button>
-                )}
+            {/* Bottom Action Bar — Delete removed; only Renew/Sync/Edit/Close */}
+            <div className="px-5 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-700/80 flex items-center justify-end gap-2 shrink-0 bg-slate-50/60 dark:bg-slate-900/60">
+              {status.canRenew && onRenew && !isViewingHistoryRecord && (
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
                   onClick={() => {
-                    onEdit(permit);
+                    if (permit) { onRenew(permit); }
                     onClose();
                   }}
-                  className="h-8 px-3 text-xs gap-1.5 font-medium border-slate-300 dark:border-slate-600 text-foreground dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="h-8 px-3.5 text-xs gap-1.5 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all active:scale-[0.98] cursor-pointer"
                 >
-                  <Pencil className="h-3.5 w-3.5" />
-                  <span>Edit</span>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  <span>Renew Permit</span>
                 </Button>
+              )}
+              {onSyncSinglePermit && permit?.id && (
                 <Button
-                  variant="secondary"
+                  type="button"
+                  variant="outline"
                   size="sm"
-                  onClick={onClose}
-                  className="h-8 px-3.5 text-xs font-medium border border-slate-200 dark:border-slate-600 text-foreground dark:text-slate-200 cursor-pointer"
+                  disabled={isSyncing}
+                  onClick={async () => {
+                    if (permit?.id && onSyncSinglePermit) {
+                      await onSyncSinglePermit(permit.id);
+                    }
+                  }}
+                  className={`h-8 px-3 text-xs gap-1.5 font-medium cursor-pointer shadow-2xs ${
+                    permit?.sync_status === "synced"
+                      ? "border-emerald-300 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50"
+                      : "border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 bg-amber-50/60 hover:bg-amber-100/80"
+                  }`}
+                  title="Push or re-synchronize this permit to Company Directus"
                 >
-                  Close
+                  <CloudUpload className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+                  <span>{permit?.sync_status === "synced" ? "Re-sync to Co." : "Sync to Company"}</span>
                 </Button>
-              </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (activePermit) { onEdit(activePermit); }
+                  onClose();
+                }}
+                className="h-8 px-3 text-xs gap-1.5 font-medium border-slate-300 dark:border-slate-600 text-foreground dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                <span>Edit</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onClose}
+                className="h-8 px-3.5 text-xs font-medium border border-slate-200 dark:border-slate-600 text-foreground dark:text-slate-200 cursor-pointer"
+              >
+                Close
+              </Button>
             </div>
           </div>
         </div>
       </DialogContent>
-
-      {/* Delete Confirmation Alert Dialog */}
-      <AlertDialog open={isConfirmDeleteOpen} onOpenChange={setIsConfirmDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-semibold">Delete Permit Record?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
-              Are you sure you want to delete permit <strong className="text-foreground">#{permit.permit_number}</strong> for <strong className="text-foreground">{company?.company_name}</strong>? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting} className="h-8 text-xs cursor-pointer">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isDeleting}
-              onClick={async () => {
-                if (permit.id) {
-                  const success = await onDelete(permit.id);
-                  if (success) {
-                    setIsConfirmDeleteOpen(false);
-                    onClose();
-                  }
-                }
-              }}
-              className="h-8 text-xs bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
-            >
-              {isDeleting ? "Deleting..." : "Delete Permit"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Dialog>
   );
 };

@@ -265,10 +265,22 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({
             </div>
 
             <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5 font-medium">
+              <div className="flex items-center gap-1.5 font-medium">
                 <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                {summary.total_companies} Companies Registered
-              </span>
+                <span>
+                  {summary.online_companies_count !== undefined
+                    ? `${summary.online_companies_count} of ${summary.total_companies} Companies Online`
+                    : `${summary.total_companies} Companies Registered`}
+                </span>
+                {Boolean(summary.offline_companies_count && summary.offline_companies_count > 0) && (
+                  <span
+                    className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-300 dark:border-rose-800"
+                    title={`${summary.offline_companies_count} company instance(s) currently offline`}
+                  >
+                    {summary.offline_companies_count} Offline
+                  </span>
+                )}
+              </div>
               <span className="text-[11px] font-semibold text-primary">
                 {healthFilter === "all" ? "• Active Filter" : "Click to view all"}
               </span>

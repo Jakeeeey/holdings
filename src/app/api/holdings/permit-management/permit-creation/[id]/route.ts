@@ -32,12 +32,15 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const result = await deletePermitRecord(id);
+    const { searchParams } = new URL(req.url);
+    const companyId = searchParams.get("company_id");
+
+    const result = await deletePermitRecord(id, companyId);
     return NextResponse.json(result);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal server error";

@@ -12,14 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import {
   ExternalLink,
   FileQuestion,
-  Eye,
   ShieldCheck,
   AlertTriangle,
   AlertOctagon,
   Archive,
   FileText,
-  ArrowLeft,
-  ChevronRight,
   ZoomIn,
   ZoomOut,
   RotateCcw,
@@ -27,6 +24,11 @@ import {
   Loader2,
   Copy,
   Check,
+  RefreshCw,
+  History,
+  Calendar,
+  Clock,
+  Landmark,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardPermitItem } from "../types/permit-dashboard.types";
@@ -36,6 +38,9 @@ interface DashboardPermitPreviewDialogProps {
   onClose: () => void;
   permit: DashboardPermitItem | null;
   companyPermits?: DashboardPermitItem[];
+  companyDirectusUrl?: string | null;
+  onSyncCompany?: (companyId: number) => Promise<boolean>;
+  isSyncingCompany?: boolean;
 }
 
 export const DashboardPermitPreviewDialog: React.FC<DashboardPermitPreviewDialogProps> = ({
@@ -43,6 +48,9 @@ export const DashboardPermitPreviewDialog: React.FC<DashboardPermitPreviewDialog
   onClose,
   permit,
   companyPermits = [],
+  companyDirectusUrl,
+  onSyncCompany,
+  isSyncingCompany,
 }) => {
   const [overridePermit, setOverridePermit] = useState<DashboardPermitItem | null>(null);
   const [prevPermitId, setPrevPermitId] = useState<string | number | null>(null);
@@ -51,7 +59,6 @@ export const DashboardPermitPreviewDialog: React.FC<DashboardPermitPreviewDialog
   const [imageError, setImageError] = useState(false);
   const [isAttachmentLoading, setIsAttachmentLoading] = useState(true);
   const [isCopied, setIsCopied] = useState(false);
-  const [sidebarView, setSidebarView] = useState<"active" | "archive_list">("active");
 
   // Pan and Zoom States
   const [zoomScale, setZoomScale] = useState(1);
@@ -67,7 +74,6 @@ export const DashboardPermitPreviewDialog: React.FC<DashboardPermitPreviewDialog
     setImageError(false);
     setIsAttachmentLoading(true);
     setIsCopied(false);
-    setSidebarView("active");
     setZoomScale(1);
     setPanPosition({ x: 0, y: 0 });
     setIsDragging(false);
@@ -157,20 +163,28 @@ export const DashboardPermitPreviewDialog: React.FC<DashboardPermitPreviewDialog
     permit && selectedPermit && String(permit.id) !== String(selectedPermit.id)
   );
 
-  // Filter history: other permits of this company with the same permit_type_id
-  const permitHistory = useMemo(() => {
-    if (!permit || !companyPermits.length) return [];
-    return companyPermits
-      .filter(
-        (p) =>
-          String(p.permit_type_id) === String(permit.permit_type_id) &&
-          String(p.id) !== String(permit.id)
-      )
-      .sort((a, b) => {
-        const dateA = new Date(a.expiration_date || 0).getTime();
-        const dateB = new Date(b.expiration_date || 0).getTime();
-        return dateB - dateA;
-      });
+  // All permit versions (Current active + historical copies) sorted by expiration date descending
+  const allPermitVersions = useMemo(() => {
+    if (!permit) return [];
+    const baseId = String(permit.id);
+    const related = companyPermits.filter(
+      (p) => String(p.permit_type_id) === String(permit.permit_type_id)
+    );
+    // Ensure base permit is included
+    const hasBase = related.some((p) => String(p.id) === baseId);
+    const all = hasBase ? related : [permit, ...related];
+
+    return [...all].sort((a, b) => {
+      // Pin the current active permit (matching base permit id) to the top always
+      const aIsActive = String(a.id) === baseId || a.status === "Active";
+      const bIsActive = String(b.id) === baseId || b.status === "Active";
+      if (aIsActive && !bIsActive) return -1;
+      if (!aIsActive && bIsActive) return 1;
+      // Then sort by expiry date descending (newest first)
+      const dateA = new Date(a.expiration_date || a.expiry_date || 0).getTime();
+      const dateB = new Date(b.expiration_date || b.expiry_date || 0).getTime();
+      return dateB - dateA;
+    });
   }, [permit, companyPermits]);
 
   if (!currentPermit) return null;
@@ -185,15 +199,24 @@ export const DashboardPermitPreviewDialog: React.FC<DashboardPermitPreviewDialog
     ) {
       return url;
     }
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    const compBase = companyDirectusUrl ? companyDirectusUrl.trim().replace(/\/$/, "") : "";
+    const baseUrl = compBase || (process.env.NEXT_PUBLIC_API_BASE_URL || "");
     if (url.startsWith("/assets/")) {
       return `${baseUrl}${url}`;
+    }
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(url.trim())) {
+      return `${baseUrl}/assets/${url.trim()}`;
     }
     return url;
   };
 
   const fileUrl = getAbsoluteFileUrl(currentPermit.file_url);
-  const isDirectusAsset = Boolean(currentPermit.file_url && currentPermit.file_url.includes("/assets/"));
+  const isUuid = Boolean(
+    currentPermit.file_url && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentPermit.file_url.trim())
+  );
+  const isDirectusAsset = Boolean(
+    currentPermit.file_url && (currentPermit.file_url.includes("/assets/") || isUuid)
+  );
   const isPdf = /\.pdf$/i.test(currentPermit.file_url || "");
   const isExplicitImage = /\.(png|jpe?g|webp|gif|svg)$/i.test(currentPermit.file_url || "");
   const isImageLike = (isExplicitImage || isDirectusAsset) && !isPdf && !imageError;
@@ -285,6 +308,21 @@ export const DashboardPermitPreviewDialog: React.FC<DashboardPermitPreviewDialog
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {onSyncCompany && currentPermit.company_id && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onSyncCompany(currentPermit.company_id)}
+                disabled={isSyncingCompany}
+                className="gap-1.5 text-xs h-8 cursor-pointer border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                title={`Sync latest records from ${currentPermit.company_name}`}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isSyncingCompany ? "animate-spin text-primary" : "text-muted-foreground"}`} />
+                <span>{isSyncingCompany ? "Syncing..." : "Sync Company Data"}</span>
+              </Button>
+            )}
+
             {fileUrl && (
               <Button
                 variant="outline"
@@ -533,332 +571,188 @@ export const DashboardPermitPreviewDialog: React.FC<DashboardPermitPreviewDialog
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Page-Based Active Permit & Archive Flow (35% width) */}
+          {/* RIGHT COLUMN: Studio Layout with Inline Renewal History matching HRM Image 1 */}
           <div className="lg:col-span-4 xl:col-span-4 h-full min-h-0 flex flex-col bg-card overflow-hidden border-l border-border/80">
-            {sidebarView === "active" ? (
-              /* ================= PAGE 1: ACTIVE PERMIT DETAILS ================= */
-              <>
-                {/* Header for Page 1 */}
-                <div className="px-4 py-3 border-b border-border shrink-0 flex items-center justify-between bg-muted/40">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    <span className="text-xs font-bold text-foreground">
-                      Permit Information
-                    </span>
-                  </div>
+            {/* Header with Title and Active/Historical Badge */}
+            <div className="px-5 py-3.5 border-b border-border shrink-0 flex items-center justify-between bg-muted/30">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" />
+                <span className="text-xs font-bold text-foreground">
+                  Permit Information
+                </span>
+              </div>
 
-                  <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/40 font-semibold gap-1">
-                    <ShieldCheck className="h-2.5 w-2.5" />
-                    Active Permit
-                  </Badge>
+              {isViewingHistoryRecord ? (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 font-semibold gap-1">
+                  <Archive className="h-2.5 w-2.5" />
+                  Historical Record
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/40 font-semibold gap-1">
+                  <ShieldCheck className="h-2.5 w-2.5" />
+                  Active Permit
+                </Badge>
+              )}
+            </div>
+
+            {/* Scrollable Content Body */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
+              {/* 1. Permit / Reg Number Card */}
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between shadow-2xs">
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                    Permit / Reg Number
+                  </p>
+                  <p className="font-mono font-bold text-sm text-foreground mt-0.5">
+                    {currentPermit.permit_number}
+                  </p>
                 </div>
-
-                {/* Body for Page 1 */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {/* Company Info Box */}
-                  <div className="p-3 rounded-xl border bg-muted/20 space-y-1">
-                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block">
-                      Registered Company
-                    </span>
-                    <p className="font-bold text-foreground text-sm leading-tight">
-                      {permit?.company_name || currentPermit.company_name}
-                    </p>
-                    {(permit?.company_code || currentPermit.company_code) && (
-                      <p className="text-[11px] font-mono text-muted-foreground">
-                        Code: {permit?.company_code || currentPermit.company_code}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Active Status Pill */}
-                  <div
-                    className={`p-3 rounded-xl border flex items-start gap-2.5 ${
-                      permit?.health_level === "critical"
-                        ? "bg-destructive/[0.06] border-destructive/30 text-destructive"
-                        : permit?.health_level === "warning"
-                        ? "bg-amber-500/[0.06] border-amber-500/30 text-amber-800 dark:text-amber-300"
-                        : "bg-emerald-500/[0.06] border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
-                    }`}
-                  >
-                    <div className="mt-0.5 shrink-0">
-                      {permit?.health_level === "critical" ? (
-                        <AlertOctagon className="h-4 w-4 text-destructive" />
-                      ) : permit?.health_level === "warning" ? (
-                        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                      ) : (
-                        <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                      )}
-                    </div>
-                    <div className="text-xs space-y-0.5 min-w-0">
-                      <p className="font-bold">
-                        {permit?.health_level === "critical"
-                          ? "Permit Has Expired"
-                          : permit?.health_level === "warning"
-                          ? "Renewal Required Soon"
-                          : "Fully Compliant & Valid"}
-                      </p>
-                      <p className="text-[11px] opacity-90 truncate">
-                        {permit?.health_level === "critical"
-                          ? `Overdue by ${Math.abs(permit.days_remaining)} days.`
-                          : permit?.health_level === "warning"
-                          ? `Expires in ${permit.days_remaining} days.`
-                          : "Valid and up to date."}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Active Key Metadata Fields */}
-                  <div className="space-y-2 pt-0.5">
-                    <div className="p-2.5 rounded-lg border bg-card flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-                          Permit Number
-                        </p>
-                        <p className="font-mono font-bold text-xs text-foreground mt-0.5">
-                          {permit?.permit_number}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCopyPermitNumber}
-                        className="h-7 px-2 text-xs gap-1 cursor-pointer hover:bg-muted text-muted-foreground hover:text-foreground"
-                        title="Copy permit number"
-                      >
-                        {isCopied ? (
-                          <>
-                            <Check className="h-3 w-3 text-emerald-600" />
-                            <span className="text-[11px] text-emerald-600 font-semibold">Copied</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3 w-3" />
-                            <span className="text-[11px]">Copy</span>
-                          </>
-                        )}
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="p-2.5 rounded-lg border bg-card space-y-0.5">
-                        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-                          Date Issued
-                        </p>
-                        <p className="font-medium text-xs text-foreground">
-                          {formatDate(permit?.issue_date || permit?.issued_date)}
-                        </p>
-                      </div>
-
-                      <div className="p-2.5 rounded-lg border bg-card space-y-0.5">
-                        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-                          Expiration Date
-                        </p>
-                        <p className="font-medium text-xs text-foreground">
-                          {formatDate(permit?.expiration_date || permit?.expiry_date)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="p-2.5 rounded-lg border bg-card space-y-0.5">
-                      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-                        Issuing Agency
-                      </p>
-                      <p className="font-medium text-xs text-foreground">
-                        {permit?.issuing_agency || "Government Agency"}
-                      </p>
-                    </div>
-
-                    {(permit?.notes || permit?.remarks) && (
-                      <div className="p-2.5 rounded-lg border bg-muted/40 space-y-0.5">
-                        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-                          Notes & Remarks
-                        </p>
-                        <p className="text-xs text-foreground">
-                          {permit?.notes || permit?.remarks}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Navigation Button to Next Page: View Archives */}
-                  <div className="pt-3 border-t border-border">
-                    {permitHistory.length > 0 ? (
-                      <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/[0.04] space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <Archive className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                            <span className="text-xs font-bold text-foreground">
-                              Archived Records Available
-                            </span>
-                          </div>
-                          <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 font-bold">
-                            {permitHistory.length} {permitHistory.length === 1 ? "Record" : "Records"}
-                          </Badge>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">
-                          Previous renewals and older copies are saved here for audit records.
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setSidebarView("archive_list")}
-                          className="w-full h-8 text-xs font-semibold gap-2 border-amber-500/40 text-amber-800 dark:text-amber-300 hover:bg-amber-500/10 cursor-pointer justify-between"
-                        >
-                          <span className="flex items-center gap-1.5">
-                            <Archive className="h-3.5 w-3.5" />
-                            View Archived Records
-                          </span>
-                          <ChevronRight className="h-3.5 w-3.5 text-amber-600" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="p-3 rounded-xl border bg-muted/20 text-muted-foreground text-center space-y-1">
-                        <Archive className="h-4 w-4 mx-auto text-muted-foreground/40" />
-                        <p className="text-[11px] font-medium text-foreground">No Historical Archives</p>
-                        <p className="text-[10px]">
-                          This is the sole document on record for this permit.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : (
-              /* ================= PAGE 2: ARCHIVE LIST & VIEWING ARCHIVED RECORD ================= */
-              <>
-                {/* Header for Page 2 with Back Button */}
-                <div className="px-4 py-3 border-b border-border shrink-0 flex items-center justify-between bg-muted/40">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      if (permit) setSelectedPermit(permit);
-                      setSidebarView("active");
-                    }}
-                    className="h-7 -ml-2 px-2 text-xs font-semibold gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer"
-                  >
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                    Back to Active Permit
-                  </Button>
-
-                  <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/40 font-semibold gap-1">
-                    <Archive className="h-2.5 w-2.5" />
-                    Archives ({permitHistory.length})
-                  </Badge>
-                </div>
-
-                {/* Body for Page 2 */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {/* Selected Archived Record Details if viewing an archived file */}
-                  {isViewingHistoryRecord && selectedPermit && (
-                    <div className="p-3.5 rounded-xl border border-amber-500/40 bg-amber-500/[0.04] space-y-3">
-                      <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
-                        <div className="flex items-center gap-1.5">
-                          <Archive className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                          <span className="text-xs font-bold text-foreground">
-                            Viewing Archived Record
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => {
-                            if (permit) setSelectedPermit(permit);
-                            setSidebarView("active");
-                          }}
-                          className="h-6 px-2 text-[10px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white gap-1 cursor-pointer"
-                        >
-                          <ShieldCheck className="h-3 w-3" />
-                          Return to Active
-                        </Button>
-                      </div>
-
-                      <div className="space-y-1.5 text-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-muted-foreground uppercase font-semibold">Permit Number</span>
-                          <span className="font-mono font-bold text-foreground">{selectedPermit.permit_number}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-muted-foreground uppercase font-semibold">Expiration Date</span>
-                          <span className="font-semibold text-foreground">
-                            {formatDate(selectedPermit.expiration_date || selectedPermit.expiry_date)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-muted-foreground uppercase font-semibold">Issuing Agency</span>
-                          <span className="font-medium text-foreground">{selectedPermit.issuing_agency || "Government Agency"}</span>
-                        </div>
-                        {(selectedPermit.notes || selectedPermit.remarks) && (
-                          <div className="pt-1 text-[11px] text-muted-foreground italic">
-                            Notes: {selectedPermit.notes || selectedPermit.remarks}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyPermitNumber}
+                  className="h-8 px-2 text-xs gap-1 cursor-pointer hover:bg-muted text-muted-foreground hover:text-foreground"
+                  title="Copy permit number"
+                >
+                  {isCopied ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="text-[11px] text-emerald-600 font-semibold">Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      <span className="text-[11px]">Copy</span>
+                    </>
                   )}
+                </Button>
+              </div>
 
-                  {/* List of Available Archived Documents */}
-                  <div className="space-y-2.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                      Select Archived Document to View
+              {/* 2. Issuing Agency / Authority Card */}
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-900/50 space-y-1 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                  <Landmark className="h-3.5 w-3.5 text-indigo-500" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider">Issuing Agency / Authority</span>
+                </div>
+                <p className="font-semibold text-xs text-foreground">
+                  {currentPermit.issuing_agency || "Government Agency"}
+                </p>
+              </div>
+
+              {/* 3. Dates 2-Column Grid */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-900/50 space-y-0.5 shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                    <Calendar className="h-3 w-3 text-blue-500" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider">Issued</span>
+                  </div>
+                  <p className="font-medium text-xs text-foreground pt-0.5">
+                    {formatDate(currentPermit.issue_date || currentPermit.issued_date)}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-900/50 space-y-0.5 shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                    <Clock className="h-3 w-3 text-amber-500" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider">Expires</span>
+                  </div>
+                  <p className="font-medium text-xs text-foreground pt-0.5">
+                    {formatDate(currentPermit.expiration_date || currentPermit.expiry_date)}
+                  </p>
+                </div>
+              </div>
+
+              {/* 4. Notes & Remarks Card (Always shown) */}
+              <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-900/50 space-y-1 shadow-2xs">
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                  Notes & Remarks
+                </p>
+                <p className="text-xs text-foreground leading-relaxed">
+                  {currentPermit.notes || currentPermit.remarks || "No remarks or notes provided."}
+                </p>
+              </div>
+
+              {/* 5. Renewal History (N) - Direct Inline List matching Image 1 */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-2 px-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <History className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs font-bold text-foreground">
+                      Renewal History ({allPermitVersions.length})
                     </span>
+                  </div>
+                </div>
 
-                    {permitHistory.map((hist, idx) => {
-                      const isSelected = String(selectedPermit?.id) === String(hist.id);
+                {allPermitVersions.length > 0 ? (
+                  <div className="space-y-2">
+                    {allPermitVersions.map((hist) => {
+                      const isSelected = String(currentPermit.id) === String(hist.id);
+                      const isHistActive = String(hist.id) === String(permit?.id);
 
                       return (
                         <div
                           key={hist.id}
-                          className={`p-3 rounded-xl border transition-all space-y-2 ${
+                          onClick={() => setSelectedPermit(hist)}
+                          className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                             isSelected
-                              ? "border-amber-500 bg-amber-500/[0.08] ring-1 ring-amber-500 shadow-xs"
-                              : "bg-card hover:bg-muted/30 border-slate-200 dark:border-slate-800"
+                              ? "border-primary bg-primary/[0.06] dark:bg-primary/[0.12] ring-1.5 ring-primary shadow-xs"
+                              : "border-slate-200 dark:border-slate-800 bg-card hover:bg-muted/40 hover:border-slate-300 dark:hover:border-slate-700 shadow-2xs"
                           }`}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] font-mono text-muted-foreground font-bold">
-                                  #{idx + 1}
-                                </span>
-                                <p className="font-mono font-bold text-xs text-foreground">
-                                  {hist.permit_number}
-                                </p>
-                              </div>
-                              <p className="text-[11px] text-muted-foreground mt-0.5">
-                                Expired: {formatDate(hist.expiration_date || hist.expiry_date)}
-                              </p>
-                            </div>
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 font-semibold">
-                              Archived
-                            </Badge>
+                          <div className="min-w-0">
+                            <p className="font-mono font-bold text-xs text-foreground truncate">
+                              {hist.permit_number}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              Exp: {formatDate(hist.expiration_date || hist.expiry_date)}
+                            </p>
                           </div>
 
-                          {(hist.notes || hist.remarks) && (
-                            <p className="text-[11px] text-muted-foreground italic truncate">
-                              Note: {hist.notes || hist.remarks}
-                            </p>
-                          )}
-
-                          <Button
-                            variant={isSelected ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setSelectedPermit(hist)}
-                            className={`w-full h-7 text-xs gap-1.5 cursor-pointer ${
-                              isSelected ? "bg-amber-600 hover:bg-amber-700 text-white" : ""
-                            }`}
-                          >
-                            <Eye className="h-3 w-3" />
-                            {isSelected ? "Currently Displaying in Viewer" : "View This Archive"}
-                          </Button>
+                          <div className="shrink-0">
+                            {isHistActive ? (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] font-semibold px-2 py-0.5 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+                              >
+                                Current Active
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] font-semibold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-muted-foreground border-slate-300 dark:border-slate-700"
+                              >
+                                Archived
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
-                </div>
-              </>
-            )}
+                ) : (
+                  <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-muted/20 text-center">
+                    <p className="text-xs text-muted-foreground">
+                      No previous renewals on record.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Footer Actions */}
+            <div className="p-3 px-4 border-t border-border bg-slate-50/60 dark:bg-slate-900/60 shrink-0 flex items-center justify-between gap-2">
+              <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[200px]">
+                {currentPermit.company_name}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onClose}
+                className="text-xs h-8 px-4 cursor-pointer"
+              >
+                Close
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

@@ -5,8 +5,8 @@ import React, { useMemo } from "react";
 import {
   Plus,
   CheckCircle2,
-  AlertTriangle,
   AlertCircle,
+  AlertTriangle,
   Calendar,
   Eye,
   Building2,
@@ -17,6 +17,7 @@ import {
   Building,
   FileCheck,
   MapPin,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,7 @@ interface PermitMatrixTableProps {
   onAddPermitForCell: (company: PermitCompany, permitType: PermitTypeItem) => void;
   onViewPermitDetails: (permit: PermitRecord, company: PermitCompany, permitType: PermitTypeItem) => void;
   onOpenAddPermitType?: () => void;
+  onSyncCompanyPermits?: (companyId: number) => Promise<boolean>;
 }
 
 // Tailored avatar gradient palette based on string hash
@@ -126,6 +128,7 @@ export const PermitMatrixTable: React.FC<PermitMatrixTableProps> = ({
   isLoading,
   onAddPermitForCell,
   onViewPermitDetails,
+  onSyncCompanyPermits,
 }) => {
   // Pre-calculate count of registered permits per column
   const columnRegisteredCount = useMemo(() => {
@@ -452,21 +455,77 @@ export const PermitMatrixTable: React.FC<PermitMatrixTableProps> = ({
                           </span>
                         </div>
 
-                        {/* TIN & Address info */}
+                        {/* TIN, Directus Status & Address info */}
                         <div className="mt-1 space-y-0.5">
-                          {company.company_tin ? (
-                            <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {company.company_tin ? (
                               <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/80 font-mono bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1 py-0.2 rounded shrink-0">
                                 TIN: {company.company_tin}
                               </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
+                            ) : (
                               <span className="text-[9px] text-muted-foreground/60 italic">
-                                No TIN provided
+                                No TIN
                               </span>
-                            </div>
-                          )}
+                            )}
+
+                            {company.is_directus_configured ? (
+                              company.connection_status === "offline" ? (
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <span
+                                    className="text-[9px] font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/70 border border-rose-300 dark:border-rose-800 px-1.5 py-0.2 rounded inline-flex items-center gap-1 cursor-help"
+                                    title={company.connection_error ? `Technical details: ${company.connection_error}` : "Company API is currently offline or unreachable."}
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                    Offline
+                                  </span>
+                                  {onSyncCompanyPermits && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onSyncCompanyPermits(company.company_id);
+                                      }}
+                                      className="p-1 rounded text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                                      title="Test / Retry connection"
+                                    >
+                                      <RefreshCw className="h-2.5 w-2.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <span
+                                    className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 px-1.5 py-0.2 rounded inline-flex items-center gap-1 cursor-help"
+                                    title="Company API is online and responding normally."
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    Online
+                                  </span>
+                                  {onSyncCompanyPermits && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onSyncCompanyPermits(company.company_id);
+                                      }}
+                                      className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                                      title="Test / Refresh connection"
+                                    >
+                                      <RefreshCw className="h-2.5 w-2.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            ) : (
+                              <span
+                                className="text-[9px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-1.5 py-0.2 rounded inline-flex items-center gap-1 shrink-0 cursor-help"
+                                title="No Directus URL or token configured for this company."
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                Unconfigured
+                              </span>
+                            )}
+                          </div>
 
                           {company.company_address ? (
                             <div className="flex items-start gap-1 text-[11px] text-muted-foreground leading-snug">
@@ -523,9 +582,12 @@ export const PermitMatrixTable: React.FC<PermitMatrixTableProps> = ({
                                   </Badge>
                                 </div>
 
-                                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                                  <Calendar className="h-3 w-3 shrink-0" />
-                                  <span>Expires: {formatDate(expiryStr)}</span>
+                                {/* Expiry Row */}
+                                <div className="flex items-center justify-between gap-1 text-[11px] text-muted-foreground">
+                                  <div className="flex items-center gap-1 truncate">
+                                    <Calendar className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">Expires: {formatDate(expiryStr)}</span>
+                                  </div>
                                 </div>
 
                                 {/* Card footer divider */}
@@ -551,26 +613,53 @@ export const PermitMatrixTable: React.FC<PermitMatrixTableProps> = ({
                           })()
                         ) : (
                           /* Empty Slot with visible dashed border & depth */
-                          <div
-                            onClick={() => onAddPermitForCell(company, permitType)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                onAddPermitForCell(company, permitType);
-                              }
-                            }}
-                            className="group/cell h-14 w-full rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600/90 dark:bg-slate-900/50 hover:border-primary dark:hover:border-primary hover:bg-primary/[0.04] dark:hover:bg-primary/[0.12] flex items-center justify-center cursor-pointer transition-all duration-150"
-                          >
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70 dark:text-slate-400 group-hover/cell:text-primary group-hover/cell:font-medium transition-colors">
-                              <div className="h-6 w-6 rounded-full border border-dashed border-slate-400 dark:border-slate-500 group-hover/cell:border-primary group-hover/cell:bg-primary/10 flex items-center justify-center transition-all">
-                                <Plus className="h-3.5 w-3.5" />
+                          (() => {
+                            const isCompanyOffline =
+                              !company.is_directus_configured || company.connection_status === "offline";
+
+                            if (isCompanyOffline) {
+                              const disabledReason = !company.is_directus_configured
+                                ? "Cannot add permit: Company API credentials are not configured."
+                                : `Cannot add permit: Company API is currently offline (${company.connection_error || "unreachable"}). Please test or restore connection first.`;
+
+                              return (
+                                <div
+                                  className="h-14 w-full rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-800/80 bg-slate-100/50 dark:bg-slate-900/40 opacity-50 flex items-center justify-center cursor-not-allowed select-none transition-all"
+                                  title={disabledReason}
+                                >
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground/50">
+                                    <div className="h-6 w-6 rounded-full border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center">
+                                      <Plus className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                    </div>
+                                    <span className="text-[11px] font-medium tracking-tight">Unavailable</span>
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div
+                                onClick={() => onAddPermitForCell(company, permitType)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    onAddPermitForCell(company, permitType);
+                                  }
+                                }}
+                                className="group/cell h-14 w-full rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600/90 dark:bg-slate-900/50 hover:border-primary dark:hover:border-primary hover:bg-primary/[0.04] dark:hover:bg-primary/[0.12] flex items-center justify-center cursor-pointer transition-all duration-150"
+                              >
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70 dark:text-slate-400 group-hover/cell:text-primary group-hover/cell:font-medium transition-colors">
+                                  <div className="h-6 w-6 rounded-full border border-dashed border-slate-400 dark:border-slate-500 group-hover/cell:border-primary group-hover/cell:bg-primary/10 flex items-center justify-center transition-all">
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </div>
+                                  <span className="hidden group-hover/cell:inline transition-all text-xs">
+                                    Add Permit
+                                  </span>
+                                </div>
                               </div>
-                              <span className="hidden group-hover/cell:inline transition-all text-xs">
-                                Add Permit
-                              </span>
-                            </div>
-                          </div>
+                            );
+                          })()
                         )}
                       </td>
                     );

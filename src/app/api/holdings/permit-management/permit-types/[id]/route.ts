@@ -60,10 +60,30 @@ export async function PATCH(
       return NextResponse.json({ success: false, message: errorMsg }, { status: response.status });
     }
 
+    // Broadcast updates to configured companies
+    let broadcastReport = null;
+    const targetName = payload.name as string || result.data?.name;
+    if (targetName) {
+      try {
+        const { broadcastPermitTypeToAllCompanies } = await import(
+          "@/modules/holdings/permit-management/permit-creation/services/permit-creation.service"
+        );
+        broadcastReport = await broadcastPermitTypeToAllCompanies(
+          targetName,
+          payload.is_active !== undefined ? (payload.is_active as number) : (result.data?.is_active ?? 1)
+        );
+      } catch (broadcastErr) {
+        console.warn("Failed to broadcast permit type update to companies:", broadcastErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Permit type updated successfully.",
+      message: broadcastReport
+        ? `Permit type updated and synchronized to ${broadcastReport.syncedCount} of ${broadcastReport.totalConfigured} company instances.`
+        : "Permit type updated successfully.",
       data: result.data,
+      broadcastReport,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal server error";

@@ -42,13 +42,19 @@ export const PermitProductCard: React.FC<PermitProductCardProps> = ({
     if (url.startsWith("/assets/")) {
       return `${baseUrl}${url}`;
     }
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(url.trim())) {
+      return `${baseUrl}/assets/${url.trim()}`;
+    }
     return url;
   };
 
   const fileUrl = getAbsoluteFileUrl(permit.file_url);
   const isPdf = /\.pdf$/i.test(permit.file_url || "");
   const isExplicitImage = /\.(png|jpe?g|webp|gif|svg)$/i.test(permit.file_url || "");
-  const isDirectusAsset = Boolean(permit.file_url && permit.file_url.includes("/assets/"));
+  const isUuid = Boolean(
+    permit.file_url && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(permit.file_url.trim())
+  );
+  const isDirectusAsset = Boolean(permit.file_url && (permit.file_url.includes("/assets/") || isUuid));
   const isImage = (isExplicitImage || isDirectusAsset) && !isPdf && !loadError;
 
   const formatDate = (dateStr?: string | null) => {

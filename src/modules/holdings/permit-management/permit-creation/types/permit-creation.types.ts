@@ -5,6 +5,26 @@ export interface PermitCompany {
   company_logo?: string | null;
   company_address?: string | null;
   company_tin?: string | null;
+  directus?: string | null;
+  directus_token?: string | null;
+  is_directus_configured?: boolean;
+  connection_status?: "online" | "offline" | "unconfigured" | "unknown";
+  connection_error?: string | null;
+}
+
+export interface CompanySyncResult {
+  company_id: number;
+  company_name: string;
+  status: "success" | "failed" | "skipped";
+  message?: string;
+}
+
+export interface SyncOperationReport {
+  success: boolean;
+  message: string;
+  syncedCount: number;
+  totalConfigured: number;
+  results: CompanySyncResult[];
 }
 
 export interface PermitTypeItem {
@@ -30,6 +50,7 @@ export interface PermitRecord {
   file_url: string;
   issuing_agency?: string | null;
   status?: "Active" | "Archived" | string | null;
+  sync_status?: "synced" | "unsynced" | "failed" | "unconfigured";
   notes?: string | null;
   remarks?: string | null;
   created_at?: string | null;

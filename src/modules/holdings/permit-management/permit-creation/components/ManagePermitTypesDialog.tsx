@@ -42,12 +42,18 @@ interface ManagePermitTypesDialogProps {
   onClose: () => void;
   permitTypes: PermitTypeItem[];
   permits: PermitRecord[];
-  onCreateType: (name: string, isActive: boolean) => Promise<boolean>;
+  onCreateType: (
+    name: string,
+    isActive: boolean,
+    options?: { silent?: boolean }
+  ) => Promise<boolean>;
   onUpdateType: (
     id: number | string,
-    data: { name?: string; is_active?: boolean | number }
+    data: { name?: string; is_active?: boolean | number },
+    options?: { silent?: boolean }
   ) => Promise<boolean>;
   isSubmitting: boolean;
+  onTriggerSyncCenter?: () => void;
 }
 
 export const ManagePermitTypesDialog: React.FC<ManagePermitTypesDialogProps> = ({
@@ -58,6 +64,7 @@ export const ManagePermitTypesDialog: React.FC<ManagePermitTypesDialogProps> = (
   onCreateType,
   onUpdateType,
   isSubmitting,
+  onTriggerSyncCenter,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -113,12 +120,13 @@ export const ManagePermitTypesDialog: React.FC<ManagePermitTypesDialogProps> = (
       return;
     }
 
-    const ok = await onCreateType(trimmed, newTypeIsActive);
+    const ok = await onCreateType(trimmed, newTypeIsActive, { silent: true });
     if (ok) {
       setNewTypeName("");
       setNewTypeIsActive(true);
       setNewTypeValidationError(null);
       setIsAddingNew(false);
+      onTriggerSyncCenter?.();
     }
   };
 
@@ -156,30 +164,36 @@ export const ManagePermitTypesDialog: React.FC<ManagePermitTypesDialogProps> = (
       }
     }
 
-    const ok = await onUpdateType(item.id, { name: trimmed });
+    const ok = await onUpdateType(item.id, { name: trimmed }, { silent: true });
     if (ok) {
       setEditingId(null);
       setEditingName("");
       setEditValidationError(null);
+      onTriggerSyncCenter?.();
     }
   };
 
-  // Toggle active/inactive
+  // Toggle active/inactive: require confirmation if deactivating
   const handleToggleActive = async (item: PermitTypeItem, checked: boolean) => {
-    // If turning off (deactivating), require confirmation dialog
     if (!checked) {
       setTypeToDeactivate(item);
       return;
     }
-    // If activating, proceed directly
-    await onUpdateType(item.id, { is_active: 1 });
+    // If activating, proceed directly with silent mode so toast shows after sync
+    const ok = await onUpdateType(item.id, { is_active: 1 }, { silent: true });
+    if (ok) {
+      onTriggerSyncCenter?.();
+    }
   };
 
+  // Confirm deactivation: update permit type and trigger sync modal immediately
   const handleConfirmDeactivate = async () => {
     if (!typeToDeactivate) return;
-    const ok = await onUpdateType(typeToDeactivate.id, { is_active: 0 });
+    const target = typeToDeactivate;
+    setTypeToDeactivate(null);
+    const ok = await onUpdateType(target.id, { is_active: 0 }, { silent: true });
     if (ok) {
-      setTypeToDeactivate(null);
+      onTriggerSyncCenter?.();
     }
   };
 
@@ -515,17 +529,17 @@ export const ManagePermitTypesDialog: React.FC<ManagePermitTypesDialogProps> = (
               <strong className="text-foreground">
                 {typeToDeactivate?.name || typeToDeactivate?.permit_type_name}
               </strong>
-              ? It will be hidden from the compliance matrix table.
+              ? It will be hidden from the compliance matrix table and synchronized to company databases.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSubmitting} className="h-8 text-xs">
+            <AlertDialogCancel disabled={isSubmitting} className="h-8 text-xs cursor-pointer">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={isSubmitting}
               onClick={handleConfirmDeactivate}
-              className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white"
+              className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
             >
               {isSubmitting ? "Deactivating..." : "Deactivate"}
             </AlertDialogAction>

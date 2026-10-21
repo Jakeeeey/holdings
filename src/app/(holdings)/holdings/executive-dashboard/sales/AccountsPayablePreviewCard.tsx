@@ -47,14 +47,14 @@ function Stat({
     tone?: "up" | "down" | "neutral";
 }) {
     return (
-        <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
-            <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-muted-foreground">
+        <div className="rounded-md border border-border/50 bg-background/70 px-2 py-1">
+            <div className="flex items-center gap-1 text-[8px] font-black uppercase tracking-wider text-muted-foreground">
                 {icon}
                 {label}
             </div>
             <p
                 className={cn(
-                    "text-xs font-bold tabular-nums truncate mt-0.5",
+                    "text-[11px] font-bold tabular-nums truncate mt-0.5",
                     tone === "up" && "text-emerald-600 dark:text-emerald-400",
                     tone === "down" && "text-rose-600 dark:text-rose-400",
                     (!tone || tone === "neutral") && "text-foreground"
@@ -82,41 +82,40 @@ function CategoryCard({
     const deltaTone = paidPct >= 80 ? "up" : paidPct >= 40 ? "neutral" : "down";
 
     return (
-        <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm hover:border-border transition-all">
-            {/* Ambient subtle glow */}
+        <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card shadow-xs hover:border-border transition-all">
             <div
-                className={cn("absolute inset-0 opacity-[0.05] pointer-events-none", gradient)}
+                className={cn("absolute inset-0 opacity-[0.04] pointer-events-none", gradient)}
                 aria-hidden
             />
-            <div className="relative p-5 sm:p-6 flex flex-col justify-between h-full">
+            <div className="relative p-3 sm:p-3.5 flex flex-col justify-between h-full">
                 <div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                         <span
                             className={cn(
-                                "flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm shrink-0",
+                                "flex h-8 w-8 items-center justify-center rounded-lg text-white shadow-xs shrink-0",
                                 gradient
                             )}
                         >
                             {icon}
                         </span>
                         <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none">
                                 {label} Payables
                             </p>
-                            <p className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums leading-tight">
+                            <p className="text-lg sm:text-xl font-black tracking-tight tabular-nums leading-tight mt-0.5">
                                 {formatPeso(totalOutstanding)}
                             </p>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2.5 mt-5">
+                    <div className="grid grid-cols-3 gap-1.5 mt-2.5">
                         <Stat
-                            icon={<PhilippinePeso className="h-3 w-3" />}
+                            icon={<PhilippinePeso className="h-2.5 w-2.5" />}
                             label="Payable"
                             value={formatPeso(totalPayable)}
                         />
                         <Stat
-                            icon={<Wallet className="h-3 w-3" />}
+                            icon={<Wallet className="h-2.5 w-2.5" />}
                             label="Paid"
                             value={formatPeso(totalPaid)}
                             tone="up"
@@ -124,9 +123,9 @@ function CategoryCard({
                         <Stat
                             icon={
                                 overdueCount > 0 ? (
-                                    <AlertCircle className="h-3 w-3 text-rose-500" />
+                                    <AlertCircle className="h-2.5 w-2.5 text-rose-500" />
                                 ) : (
-                                    <TrendingUp className="h-3 w-3 text-emerald-500" />
+                                    <TrendingUp className="h-2.5 w-2.5 text-emerald-500" />
                                 )
                             }
                             label={overdueCount > 0 ? "Overdue" : "Healthy"}
@@ -136,14 +135,14 @@ function CategoryCard({
                     </div>
                 </div>
 
-                <div className="mt-5 pt-3 border-t border-border/40">
-                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                <div className="mt-2.5 pt-2 border-t border-border/40">
+                    <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                         <span>Settlement Rate</span>
                         <span className="tabular-nums font-mono font-bold text-foreground">
                             {paidPct.toFixed(1)}%
                         </span>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden">
+                    <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden">
                         <div
                             className={cn(
                                 "h-full rounded-full transition-all duration-500",
@@ -155,9 +154,11 @@ function CategoryCard({
                         />
                     </div>
 
-                    <p className="mt-3 text-[11px] text-muted-foreground font-medium">
-                        <span className="font-bold text-foreground">{totalRecords}</span> records on file
-                    </p>
+                    <div className="flex items-center justify-between mt-1.5 text-[10px] text-muted-foreground">
+                        <span>
+                            <span className="font-bold text-foreground">{totalRecords}</span> records on file
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -297,87 +298,81 @@ export function AccountsPayablePreviewCard({
 
     return (
         <div className="col-span-1 lg:col-span-2 xl:col-span-3 w-full">
-            <Card className="relative overflow-hidden border border-border/60 bg-card rounded-2xl shadow-sm hover:border-primary/40 hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-4 sm:p-6 space-y-4">
-                    {/* Header Banner */}
-                    <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-sky-500/5 via-indigo-500/5 to-amber-500/5 px-5 sm:px-7 py-5 sm:py-6">
-                        <div
-                            className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-gradient-to-br from-sky-500/20 to-indigo-500/20 blur-3xl pointer-events-none"
-                            aria-hidden
-                        />
-                        <div
-                            className="absolute -right-8 -bottom-16 h-56 w-56 rounded-full bg-gradient-to-br from-amber-500/15 to-rose-500/15 blur-3xl pointer-events-none"
-                            aria-hidden
-                        />
-                        <div className="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+            <Card className="relative overflow-hidden border border-border/60 bg-card rounded-2xl shadow-xs hover:border-primary/40 hover:shadow-lg transition-all duration-300">
+                <CardContent className="p-3 sm:p-4 space-y-2.5">
+                    {/* Compact Header Banner */}
+                    <div className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-r from-sky-500/5 via-indigo-500/5 to-amber-500/5 px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                                     Financial Monitoring
                                 </p>
-                                <h2 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight text-foreground">
+                            </div>
+                            <div className="flex items-baseline gap-2 mt-0.5">
+                                <h3 className="text-lg sm:text-xl font-black tracking-tight text-foreground truncate">
                                     {group.group_name || "Accounts Payable"}
-                                </h2>
-                                <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-2xl font-medium">
-                                    Trade vs Non-Trade payables, aging analysis, and supplier exposure at a glance.
-                                </p>
+                                </h3>
+                                <span className="text-[11px] text-muted-foreground truncate hidden md:inline font-medium">
+                                    • Trade vs Non-Trade payables, aging &amp; supplier exposure
+                                </span>
                             </div>
-                            <div className="flex items-center gap-2 self-start sm:self-auto">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={exportToPDF}
-                                    className="h-9 px-3 text-xs gap-1.5 shadow-sm"
-                                    disabled={loading || records.length === 0}
-                                >
-                                    <Download className="h-3.5 w-3.5" />
-                                    Export PDF
-                                </Button>
-                                <Button asChild size="sm" className="h-9 px-3.5 text-xs gap-1.5 font-bold shadow-sm">
-                                    <Link href={targetUrl}>
-                                        View Full Report
-                                        <ChevronRight className="h-3.5 w-3.5" />
-                                    </Link>
-                                </Button>
-                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={exportToPDF}
+                                className="h-7 px-2.5 text-[11px] gap-1 shadow-2xs font-semibold"
+                                disabled={loading || records.length === 0}
+                            >
+                                <Download className="h-3 w-3" />
+                                Export PDF
+                            </Button>
+                            <Button asChild size="sm" className="h-7 px-3 text-[11px] gap-1 font-bold shadow-2xs">
+                                <Link href={targetUrl}>
+                                    View Full Report
+                                    <ChevronRight className="h-3 w-3" />
+                                </Link>
+                            </Button>
                         </div>
                     </div>
 
                     {loading ? (
-                        <div className="space-y-4 pt-1">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Skeleton className="h-56 rounded-2xl" />
-                                <Skeleton className="h-56 rounded-2xl" />
+                        <div className="space-y-2.5 pt-0.5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                <Skeleton className="h-36 rounded-xl" />
+                                <Skeleton className="h-36 rounded-xl" />
                             </div>
-                            <Skeleton className="h-20 rounded-xl" />
-                            <Skeleton className="h-10 rounded-xl" />
+                            <Skeleton className="h-14 rounded-lg" />
+                            <Skeleton className="h-8 rounded-lg" />
                         </div>
                     ) : (
                         <>
                             {/* Two Side-by-Side Cards: Trade & Non-Trade */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                                 <CategoryCard
                                     data={trade}
                                     label="Trade"
-                                    icon={<Briefcase className="h-5 w-5" />}
+                                    icon={<Briefcase className="h-4 w-4" />}
                                     gradient="bg-gradient-to-br from-sky-500 to-indigo-500"
                                 />
                                 <CategoryCard
                                     data={nonTrade}
                                     label="Non-Trade"
-                                    icon={<Wallet className="h-5 w-5" />}
+                                    icon={<Wallet className="h-4 w-4" />}
                                     gradient="bg-gradient-to-br from-amber-500 to-rose-500"
                                 />
                             </div>
 
-                            {/* Stacked Composition Bar */}
-                            <div className="rounded-xl border border-border/70 bg-card p-4 sm:p-5 shadow-sm">
-                                <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-2">
+                            {/* Compact Stacked Composition Bar */}
+                            <div className="rounded-lg border border-border/60 bg-card/80 px-3 py-2 shadow-2xs">
+                                <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">
                                     <span>Composition by Outstanding Amount</span>
                                     <span className="text-foreground font-mono font-bold">
                                         {formatPeso(totalOutstanding)} TOTAL
                                     </span>
                                 </div>
-                                <div className="h-3 w-full rounded-full overflow-hidden bg-muted flex shadow-inner">
+                                <div className="h-2 w-full rounded-full overflow-hidden bg-muted flex">
                                     <div
                                         className="h-full bg-gradient-to-r from-sky-500 to-indigo-500 transition-all duration-500"
                                         style={{ width: `${tradePct}%` }}
@@ -389,47 +384,47 @@ export function AccountsPayablePreviewCard({
                                         title={`Non-Trade: ${nonTradePct.toFixed(1)}%`}
                                     />
                                 </div>
-                                <div className="flex items-center justify-between mt-2.5 text-xs">
+                                <div className="flex items-center justify-between mt-1.5 text-[10px]">
                                     <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
-                                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-sky-500" />
+                                        <span className="inline-block w-2 h-2 rounded-full bg-sky-500" />
                                         Trade <span className="font-bold font-mono text-foreground">{tradePct.toFixed(1)}%</span>
                                     </span>
                                     <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
-                                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-500" />
+                                        <span className="inline-block w-2 h-2 rounded-full bg-rose-500" />
                                         Non-Trade <span className="font-bold font-mono text-foreground">{nonTradePct.toFixed(1)}%</span>
                                     </span>
                                 </div>
                             </div>
 
-                            {/* Bottom Tab Pill & Records Count Summary Bar */}
+                            {/* Compact Bottom Pill & Records Count Summary Bar */}
                             <Link
                                 href={targetUrl}
-                                className="flex flex-wrap items-center justify-between gap-3 p-3 sm:px-4 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors group cursor-pointer"
+                                className="flex flex-wrap items-center justify-between gap-2 p-2 sm:px-3 rounded-lg border border-border/50 bg-muted/15 hover:bg-muted/30 transition-colors group cursor-pointer"
                             >
-                                <div className="flex items-center gap-2">
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border border-border/60 bg-background shadow-xs text-foreground">
-                                        <ListChecks className="h-3.5 w-3.5" />
+                                <div className="flex items-center gap-1.5">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold border border-border/60 bg-background text-foreground">
+                                        <ListChecks className="h-3 w-3" />
                                         All
-                                        <span className="text-[10px] font-black opacity-70 ml-1">{records.length}</span>
+                                        <span className="text-[9px] font-black opacity-70 ml-0.5">{records.length}</span>
                                     </span>
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border border-sky-500/20 bg-sky-500/5 text-sky-700 dark:text-sky-400">
-                                        <Briefcase className="h-3.5 w-3.5" />
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold border border-sky-500/20 bg-sky-500/5 text-sky-700 dark:text-sky-400">
+                                        <Briefcase className="h-3 w-3" />
                                         Trade
-                                        <span className="text-[10px] font-black ml-1">{trade.totalRecords}</span>
+                                        <span className="text-[9px] font-black ml-0.5">{trade.totalRecords}</span>
                                     </span>
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-400">
-                                        <Wallet className="h-3.5 w-3.5" />
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold border border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-400">
+                                        <Wallet className="h-3 w-3" />
                                         Non-Trade
-                                        <span className="text-[10px] font-black ml-1">{nonTrade.totalRecords}</span>
+                                        <span className="text-[9px] font-black ml-0.5">{nonTrade.totalRecords}</span>
                                     </span>
                                 </div>
 
-                                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground group-hover:text-primary transition-colors">
+                                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground group-hover:text-primary transition-colors">
                                     <span className="tabular-nums">
                                         <span className="font-bold text-foreground font-mono">{formatPeso(totalOutstanding)}</span> outstanding across{" "}
                                         <span className="font-bold text-foreground font-mono">{records.length}</span> records
                                     </span>
-                                    <ChevronRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
+                                    <ChevronRight className="h-3.5 w-3.5 transform group-hover:translate-x-1 transition-transform" />
                                 </div>
                             </Link>
                         </>

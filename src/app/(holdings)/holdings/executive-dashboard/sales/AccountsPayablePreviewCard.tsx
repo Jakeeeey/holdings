@@ -10,7 +10,6 @@ import {
     TrendingUp,
     Download,
     ChevronRight,
-    ListChecks,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -317,23 +316,35 @@ export function AccountsPayablePreviewCard({
                                 </span>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={exportToPDF}
-                                className="h-7 px-2.5 text-[11px] gap-1 shadow-2xs font-semibold"
-                                disabled={loading || records.length === 0}
-                            >
-                                <Download className="h-3 w-3" />
-                                Export PDF
-                            </Button>
-                            <Button asChild size="sm" className="h-7 px-3 text-[11px] gap-1 font-bold shadow-2xs">
-                                <Link href={targetUrl}>
-                                    View Full Report
-                                    <ChevronRight className="h-3 w-3" />
-                                </Link>
-                            </Button>
+                        <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+                            {!loading && (
+                                <div className="text-right border-r border-border/60 pr-3 hidden sm:block">
+                                    <p className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">
+                                        Total Payable
+                                    </p>
+                                    <p className="text-base sm:text-lg font-black font-mono text-primary leading-tight">
+                                        {formatPeso(metrics?.totalPayable ?? 0)}
+                                    </p>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={exportToPDF}
+                                    className="h-7 px-2.5 text-[11px] gap-1 shadow-2xs font-semibold"
+                                    disabled={loading || records.length === 0}
+                                >
+                                    <Download className="h-3 w-3" />
+                                    Export PDF
+                                </Button>
+                                <Button asChild size="sm" className="h-7 px-3 text-[11px] gap-1 font-bold shadow-2xs">
+                                    <Link href={targetUrl}>
+                                        View Full Report
+                                        <ChevronRight className="h-3 w-3" />
+                                    </Link>
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
@@ -344,7 +355,6 @@ export function AccountsPayablePreviewCard({
                                 <Skeleton className="h-36 rounded-xl" />
                             </div>
                             <Skeleton className="h-14 rounded-lg" />
-                            <Skeleton className="h-8 rounded-lg" />
                         </div>
                     ) : (
                         <>
@@ -368,9 +378,15 @@ export function AccountsPayablePreviewCard({
                             <div className="rounded-lg border border-border/60 bg-card/80 px-3 py-2 shadow-2xs">
                                 <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">
                                     <span>Composition by Outstanding Amount</span>
-                                    <span className="text-foreground font-mono font-bold">
-                                        {formatPeso(totalOutstanding)} TOTAL
-                                    </span>
+                                    <div className="flex items-center gap-2 font-mono">
+                                        <span className="text-muted-foreground font-medium hidden sm:inline">
+                                            Total Payable: <strong className="text-foreground">{formatPeso(metrics?.totalPayable ?? 0)}</strong>
+                                        </span>
+                                        <span className="hidden sm:inline text-border">|</span>
+                                        <span className="text-foreground font-bold">
+                                            {formatPeso(totalOutstanding)} OUTSTANDING
+                                        </span>
+                                    </div>
                                 </div>
                                 <div className="h-2 w-full rounded-full overflow-hidden bg-muted flex">
                                     <div
@@ -395,38 +411,6 @@ export function AccountsPayablePreviewCard({
                                     </span>
                                 </div>
                             </div>
-
-                            {/* Compact Bottom Pill & Records Count Summary Bar */}
-                            <Link
-                                href={targetUrl}
-                                className="flex flex-wrap items-center justify-between gap-2 p-2 sm:px-3 rounded-lg border border-border/50 bg-muted/15 hover:bg-muted/30 transition-colors group cursor-pointer"
-                            >
-                                <div className="flex items-center gap-1.5">
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold border border-border/60 bg-background text-foreground">
-                                        <ListChecks className="h-3 w-3" />
-                                        All
-                                        <span className="text-[9px] font-black opacity-70 ml-0.5">{records.length}</span>
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold border border-sky-500/20 bg-sky-500/5 text-sky-700 dark:text-sky-400">
-                                        <Briefcase className="h-3 w-3" />
-                                        Trade
-                                        <span className="text-[9px] font-black ml-0.5">{trade.totalRecords}</span>
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold border border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-400">
-                                        <Wallet className="h-3 w-3" />
-                                        Non-Trade
-                                        <span className="text-[9px] font-black ml-0.5">{nonTrade.totalRecords}</span>
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground group-hover:text-primary transition-colors">
-                                    <span className="tabular-nums">
-                                        <span className="font-bold text-foreground font-mono">{formatPeso(totalOutstanding)}</span> outstanding across{" "}
-                                        <span className="font-bold text-foreground font-mono">{records.length}</span> records
-                                    </span>
-                                    <ChevronRight className="h-3.5 w-3.5 transform group-hover:translate-x-1 transition-transform" />
-                                </div>
-                            </Link>
                         </>
                     )}
                 </CardContent>

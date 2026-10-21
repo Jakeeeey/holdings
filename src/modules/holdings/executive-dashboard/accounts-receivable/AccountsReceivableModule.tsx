@@ -39,6 +39,8 @@ export function AccountsReceivableModule({ groupId }: AccountsReceivableModulePr
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [status, setStatus] = useState('');
+  const [arStatus, setArStatus] = useState('');
+  const [transactionStatus, setTransactionStatus] = useState('');
   const [salesman, setSalesman] = useState('');
 
   const salesmanOptions = useMemo(
@@ -46,7 +48,12 @@ export function AccountsReceivableModule({ groupId }: AccountsReceivableModulePr
     [records]
   );
 
-  const isFiltered = !!(search || dateFrom || dateTo || status || salesman);
+  const transactionStatusOptions = useMemo(
+    () => Array.from(new Set(records.map((r) => r.transactionStatus).filter(Boolean))).sort(),
+    [records]
+  );
+
+  const isFiltered = !!(search || dateFrom || dateTo || status || salesman || arStatus || transactionStatus);
 
   const filteredRecords = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -62,10 +69,12 @@ export function AccountsReceivableModule({ groupId }: AccountsReceivableModulePr
       if (dateFrom && r.invoiceDate && r.invoiceDate < dateFrom) return false;
       if (dateTo && r.invoiceDate && r.invoiceDate > dateTo) return false;
       if (status && r.status !== status) return false;
+      if (arStatus && r.status !== arStatus) return false;
+      if (transactionStatus && r.transactionStatus !== transactionStatus) return false;
       if (salesman && r.salesman !== salesman) return false;
       return true;
     });
-  }, [records, search, dateFrom, dateTo, status, salesman]);
+  }, [records, search, dateFrom, dateTo, status, arStatus, transactionStatus, salesman]);
 
   const metrics = useMemo(() => deriveMetrics(filteredRecords), [filteredRecords]);
   const agingData = useMemo(() => buildAgingBuckets(filteredRecords), [filteredRecords]);
@@ -76,6 +85,8 @@ export function AccountsReceivableModule({ groupId }: AccountsReceivableModulePr
     setDateFrom('');
     setDateTo('');
     setStatus('');
+    setArStatus('');
+    setTransactionStatus('');
     setSalesman('');
     setPage(1);
   };
@@ -224,6 +235,11 @@ export function AccountsReceivableModule({ groupId }: AccountsReceivableModulePr
         setDateTo={setDateTo}
         status={status}
         setStatus={setStatus}
+        arStatus={arStatus}
+        setArStatus={setArStatus}
+        transactionStatus={transactionStatus}
+        setTransactionStatus={setTransactionStatus}
+        transactionStatusOptions={transactionStatusOptions}
         salesman={salesman}
         setSalesman={setSalesman}
         salesmanOptions={salesmanOptions}

@@ -6,28 +6,30 @@ import {
     Receipt,
     PhilippinePeso,
     AlertCircle,
-    TrendingDown,
+    Clock,
+    Info,
     Download,
     ChevronRight,
-    CheckCircle2,
-    Users,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import {
-    transformRawInvoices,
-    deriveMetrics,
-    buildAgingBuckets,
-    formatPeso,
-} from "@/modules/holdings/executive-dashboard/accounts-receivable/utils";
-import type {
-    RawInvoiceRow,
-    Invoice,
-    ARMetricsSummary,
-    AgingBucket,
-} from "@/modules/holdings/executive-dashboard/accounts-receivable/types";
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { formatPeso } from "@/modules/holdings/executive-dashboard/accounts-receivable/utils";
+import {
+    ResponsiveContainer,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+} from "recharts";
 
 interface AccountsReceivablePreviewCardProps {
     group: { id: number; group_name: string; [key: string]: unknown };
@@ -35,34 +37,125 @@ interface AccountsReceivablePreviewCardProps {
     endDate?: string;
 }
 
-function Stat({
-    icon,
-    label,
-    value,
-    tone,
-}: {
-    icon: React.ReactNode;
+interface ARMetrics {
+    totalReceivable: number;
+    totalOutstanding: number;
+    totalUnposted: number;
+    realOutstanding: number;
+    avgOverdue: number;
+    overdueCount: number;
+    invoiceCount: number;
+    totalPendingCancellation: number;
+}
+
+interface AgingBucketItem {
+    range: string;
+    amount: number;
+}
+
+interface SalesmanItem {
+    name: string;
+    value: number;
+    unposted: number;
+}
+
+interface MetricCardProps {
     label: string;
     value: string;
-    tone?: "up" | "down" | "neutral";
-}) {
+    sub?: string;
+    icon: React.ReactNode;
+    type: "receivable" | "outstanding" | "unposted" | "exposure" | "overdue";
+    explanation?: React.ReactNode;
+}
+
+function MetricStat({ label, value, sub, icon, type, explanation }: MetricCardProps) {
+    const config = {
+        receivable: {
+            border: "border-blue-500/20 dark:border-blue-500/30",
+            bg: "bg-blue-500/[0.03] dark:bg-blue-500/[0.06]",
+            text: "text-blue-600 dark:text-blue-400",
+            iconBg: "bg-blue-50 dark:bg-blue-950/60",
+        },
+        outstanding: {
+            border: "border-amber-500/20 dark:border-amber-500/30",
+            bg: "bg-amber-500/[0.03] dark:bg-amber-500/[0.06]",
+            text: "text-amber-600 dark:text-amber-400",
+            iconBg: "bg-amber-50 dark:bg-amber-950/60",
+        },
+        unposted: {
+            border: "border-purple-500/20 dark:border-purple-500/30",
+            bg: "bg-purple-500/[0.03] dark:bg-purple-500/[0.06]",
+            text: "text-purple-600 dark:text-purple-400",
+            iconBg: "bg-purple-50 dark:bg-purple-950/60",
+        },
+        exposure: {
+            border: "border-emerald-500/20 dark:border-emerald-500/30",
+            bg: "bg-emerald-500/[0.03] dark:bg-emerald-500/[0.06]",
+            text: "text-emerald-600 dark:text-emerald-400",
+            iconBg: "bg-emerald-50 dark:bg-emerald-950/60",
+        },
+        overdue: {
+            border: "border-rose-500/20 dark:border-rose-500/30",
+            bg: "bg-rose-500/[0.03] dark:bg-rose-500/[0.06]",
+            text: "text-rose-600 dark:text-rose-400",
+            iconBg: "bg-rose-50 dark:bg-rose-950/60",
+        },
+    }[type];
+
     return (
-        <div className="rounded-md border border-border/50 bg-background/70 px-2 py-1">
-            <div className="flex items-center gap-1 text-[8px] font-black uppercase tracking-wider text-muted-foreground">
-                {icon}
-                {label}
+        <div
+            className={cn(
+                "flex flex-col justify-between rounded-xl border p-3.5 shadow-2xs transition-all duration-200 relative overflow-hidden bg-card",
+                config.border,
+                config.bg
+            )}
+        >
+            <div className="flex items-center justify-between gap-1.5 z-10">
+                <div className="flex items-center gap-1 min-w-0">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/80 truncate">
+                        {label}
+                    </span>
+                    {explanation && (
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <button
+                                    type="button"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="p-0.5 rounded-full text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer inline-flex items-center justify-center shrink-0"
+                                    title="More info"
+                                >
+                                    <Info className="h-3 w-3" />
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                                className="w-80 p-3.5 border border-border bg-popover text-popover-foreground shadow-xl rounded-xl z-50 text-xs"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {explanation}
+                            </PopoverContent>
+                        </Popover>
+                    )}
+                </div>
+                <span
+                    className={cn(
+                        "p-1.5 rounded-full shrink-0 flex items-center justify-center",
+                        config.iconBg,
+                        config.text
+                    )}
+                >
+                    {icon}
+                </span>
             </div>
-            <p
-                className={cn(
-                    "text-[11px] font-bold tabular-nums truncate mt-0.5 font-mono",
-                    tone === "up" && "text-emerald-600 dark:text-emerald-400",
-                    tone === "down" && "text-rose-600 dark:text-rose-400",
-                    (!tone || tone === "neutral") && "text-foreground"
+            <div className="mt-1.5 z-10">
+                <div className="text-lg sm:text-xl font-black text-foreground tracking-tight tabular-nums leading-tight">
+                    {value}
+                </div>
+                {sub && (
+                    <div className="text-[11px] text-muted-foreground font-medium mt-1 truncate">
+                        {sub}
+                    </div>
                 )}
-                title={value}
-            >
-                {value}
-            </p>
+            </div>
         </div>
     );
 }
@@ -73,8 +166,15 @@ export function AccountsReceivablePreviewCard({
     endDate,
 }: AccountsReceivablePreviewCardProps) {
     const [loading, setLoading] = useState(true);
-    const [records, setRecords] = useState<Invoice[]>([]);
-    const [metrics, setMetrics] = useState<ARMetricsSummary | null>(null);
+    const [mounted, setMounted] = useState(false);
+    const [metrics, setMetrics] = useState<ARMetrics | null>(null);
+    const [agingData, setAgingData] = useState<AgingBucketItem[]>([]);
+    const [salesmanData, setSalesmanData] = useState<SalesmanItem[]>([]);
+    const [rawRows, setRawRows] = useState<Array<Record<string, unknown>>>([]);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
@@ -94,18 +194,23 @@ export function AccountsReceivablePreviewCard({
                 if (!res.ok) throw new Error(`Request failed: ${res.status}`);
 
                 const result = await res.json();
-                const rows: RawInvoiceRow[] = Array.isArray(result)
-                    ? result
-                    : (result.rows ?? result.data ?? result.content ?? result.invoices ?? []);
-
-                const parsed = transformRawInvoices(rows);
                 if (!isMounted) return;
 
-                setRecords(parsed);
-                setMetrics(deriveMetrics(parsed));
+                if (result.metrics) {
+                    setMetrics(result.metrics);
+                }
+                if (Array.isArray(result.agingData)) {
+                    setAgingData(result.agingData);
+                }
+                if (Array.isArray(result.salesmanData)) {
+                    setSalesmanData(result.salesmanData);
+                }
+                if (Array.isArray(result.rows)) {
+                    setRawRows(result.rows);
+                }
             } catch (err) {
                 if (isMounted) {
-                    console.warn(`AR metrics pending for group ${group.id}:`, err);
+                    console.warn(`AR metrics error for group ${group.id}:`, err);
                 }
             } finally {
                 if (isMounted) {
@@ -121,15 +226,6 @@ export function AccountsReceivablePreviewCard({
         };
     }, [group.id, startDate, endDate]);
 
-    const agingData: AgingBucket[] = useMemo(() => buildAgingBuckets(records), [records]);
-
-    const totalOutstanding = metrics?.totalOutstanding ?? 0;
-    const totalReceivable = metrics?.totalReceivable ?? 0;
-    const totalPaid = metrics?.totalPaid ?? 0;
-    const totalOverdue = metrics?.totalOverdue ?? 0;
-    const collectionRate = metrics?.collectionRate ?? 0;
-    const overdueRate = totalOutstanding > 0 ? (totalOverdue / totalOutstanding) * 100 : 0;
-
     const exportToPDF = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -140,7 +236,7 @@ export function AccountsReceivablePreviewCard({
         ]);
         const doc = new jsPDF({ orientation: "landscape" });
         const pageW = doc.internal.pageSize.getWidth();
-        const total = totalReceivable;
+        const total = metrics?.totalReceivable ?? 0;
         const formattedTotal = `PHP ${total.toLocaleString("en-PH", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
@@ -164,7 +260,7 @@ export function AccountsReceivablePreviewCard({
         doc.setFontSize(8);
         doc.setTextColor(120, 120, 120);
         doc.text(
-            `Exported: ${new Date().toLocaleString("en-PH")}   Total Records: ${records.length}`,
+            `Exported: ${new Date().toLocaleString("en-PH")}   Total Invoices: ${metrics?.invoiceCount ?? rawRows.length}`,
             14,
             26
         );
@@ -178,16 +274,16 @@ export function AccountsReceivablePreviewCard({
                 "Invoice No.", "Customer", "Salesman", "Due Date",
                 "Net Receivable (PHP)", "Paid (PHP)", "Outstanding (PHP)", "Overdue", "Status"
             ]],
-            body: records.slice(0, 500).map((r) => [
-                r.invoiceNo,
-                r.customer,
-                r.salesman,
-                r.due ? r.due.split(" ")[0] : "—",
-                r.netReceivable.toLocaleString("en-PH", { minimumFractionDigits: 2 }),
-                r.totalPaid.toLocaleString("en-PH", { minimumFractionDigits: 2 }),
-                r.outstanding.toLocaleString("en-PH", { minimumFractionDigits: 2 }),
-                r.overdue !== null && r.overdue > 0 ? `${r.overdue}d` : "—",
-                r.status,
+            body: rawRows.slice(0, 500).map((r) => [
+                String(r.invoiceNo || ""),
+                String(r.customerName || r.customer || ""),
+                String(r.salesman || ""),
+                r.calculatedDueDate || r.due ? String(r.calculatedDueDate || r.due).split("T")[0] : "—",
+                Number(r.netReceivable || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 }),
+                Number(r.totalPaid || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 }),
+                Number(r.outstandingBalance || r.outstanding || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 }),
+                r.daysOverdue !== null && Number(r.daysOverdue) > 0 ? `${r.daysOverdue}d` : "—",
+                String(r.arStatus || r.paymentStatus || r.status || "—"),
             ]),
             margin: { left: 14, right: 14 },
         });
@@ -197,10 +293,19 @@ export function AccountsReceivablePreviewCard({
 
     const targetUrl = `/holdings/executive-dashboard/sales/${group.id}/accounts-receivable`;
 
+    const totalReceivable = metrics?.totalReceivable ?? 0;
+    const totalOutstanding = metrics?.totalOutstanding ?? 0;
+    const totalUnposted = metrics?.totalUnposted ?? 0;
+    const realOutstanding = metrics?.realOutstanding ?? 0;
+    const avgOverdue = metrics?.avgOverdue ?? 0;
+    const overdueCount = metrics?.overdueCount ?? 0;
+    const invoiceCount = metrics?.invoiceCount ?? 0;
+    const totalPendingCancellation = metrics?.totalPendingCancellation ?? 0;
+
     return (
         <div className="col-span-1 lg:col-span-2 xl:col-span-3 w-full">
             <Card className="relative overflow-hidden border border-border/60 bg-card rounded-2xl shadow-xs hover:border-primary/40 hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-3 sm:p-4 space-y-2.5">
+                <CardContent className="p-3 sm:p-4 space-y-3">
                     {/* Compact Header Banner */}
                     <div className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-r from-blue-500/5 via-sky-500/5 to-emerald-500/5 px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
                         <div className="min-w-0">
@@ -214,7 +319,7 @@ export function AccountsReceivablePreviewCard({
                                     {group.group_name || "Accounts Receivable"}
                                 </h3>
                                 <span className="text-[11px] text-muted-foreground truncate hidden md:inline font-medium">
-                                    • Customer aging, overdue receivables &amp; collection efficiency
+                                    • Customer aging, overdue receivables &amp; salesman exposure
                                 </span>
                             </div>
                         </div>
@@ -236,7 +341,7 @@ export function AccountsReceivablePreviewCard({
                                     size="sm"
                                     onClick={exportToPDF}
                                     className="h-7 px-2.5 text-[11px] gap-1 shadow-2xs font-semibold"
-                                    disabled={loading || records.length === 0}
+                                    disabled={loading || rawRows.length === 0}
                                 >
                                     <Download className="h-3 w-3" />
                                     Export PDF
@@ -252,193 +357,242 @@ export function AccountsReceivablePreviewCard({
                     </div>
 
                     {loading ? (
-                        <div className="space-y-2.5 pt-0.5">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                                <Skeleton className="h-36 rounded-xl" />
-                                <Skeleton className="h-36 rounded-xl" />
+                        <div className="space-y-3 pt-0.5">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                                {[...Array(5)].map((_, i) => (
+                                    <Skeleton key={i} className="h-20 rounded-xl" />
+                                ))}
                             </div>
-                            <Skeleton className="h-14 rounded-lg" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <Skeleton className="h-56 rounded-xl" />
+                                <Skeleton className="h-56 rounded-xl" />
+                            </div>
                         </div>
                     ) : (
                         <>
-                            {/* Two Side-by-Side Cards: Active Receivables & Aging Exposure */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                                {/* Left: Active Receivables */}
-                                <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card shadow-xs hover:border-border transition-all">
-                                    <div className="absolute inset-0 opacity-[0.04] bg-gradient-to-br from-blue-500 to-sky-500 pointer-events-none" />
-                                    <div className="relative p-3 sm:p-3.5 flex flex-col justify-between h-full">
-                                        <div>
-                                            <div className="flex items-center gap-2.5">
-                                                <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white shadow-xs bg-gradient-to-br from-blue-500 to-sky-500 shrink-0">
-                                                    <Receipt className="h-4 w-4" />
+                            {/* Row 1: 5 Stat Cards */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                                <MetricStat
+                                    label="Total Receivable"
+                                    value={formatPeso(totalReceivable)}
+                                    sub={`${invoiceCount} Invoices`}
+                                    icon={<PhilippinePeso className="h-3.5 w-3.5" />}
+                                    type="receivable"
+                                />
+                                <MetricStat
+                                    label="Outstanding (Ledger)"
+                                    value={formatPeso(totalOutstanding)}
+                                    sub={
+                                        totalPendingCancellation > 0
+                                            ? `Pending cancellation: ${formatPeso(totalPendingCancellation)}`
+                                            : `${((totalOutstanding / (totalReceivable || 1)) * 100).toFixed(1)}% of receivable`
+                                    }
+                                    icon={<AlertCircle className="h-3.5 w-3.5" />}
+                                    type="outstanding"
+                                />
+                                <MetricStat
+                                    label="Unposted Collections"
+                                    value={formatPeso(totalUnposted)}
+                                    sub="In settlement queue"
+                                    icon={<Receipt className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />}
+                                    type="unposted"
+                                    explanation={
+                                        <div className="space-y-2">
+                                            <div className="font-bold text-xs border-b border-border pb-1 text-foreground flex items-center justify-between">
+                                                <span>Settlement Queue Summary</span>
+                                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold uppercase">
+                                                    Unposted Pool
                                                 </span>
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none">
-                                                        Outstanding Receivables
-                                                    </p>
-                                                    <p className="text-lg sm:text-xl font-black font-mono tracking-tight tabular-nums leading-tight mt-0.5">
-                                                        {formatPeso(totalOutstanding)}
-                                                    </p>
-                                                </div>
                                             </div>
-
-                                            <div className="grid grid-cols-3 gap-1.5 mt-2.5">
-                                                <Stat
-                                                    icon={<Receipt className="h-2.5 w-2.5" />}
-                                                    label="Receivable"
-                                                    value={formatPeso(totalReceivable)}
-                                                />
-                                                <Stat
-                                                    icon={<CheckCircle2 className="h-2.5 w-2.5" />}
-                                                    label="Collected"
-                                                    value={formatPeso(totalPaid)}
-                                                    tone="up"
-                                                />
-                                                <Stat
-                                                    icon={<Users className="h-2.5 w-2.5" />}
-                                                    label="Customers"
-                                                    value={`${metrics?.activeCustomers ?? 0} cust`}
-                                                />
-                                            </div>
+                                            <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                                Total collected cash and checks currently in unposted pouches:{" "}
+                                                <strong className="text-foreground">{formatPeso(totalUnposted)}</strong>.
+                                            </p>
                                         </div>
-
-                                        <div className="mt-2.5 pt-2 border-t border-border/40">
-                                            <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                                                <span>Collection Efficiency</span>
-                                                <span className="tabular-nums font-mono font-bold text-foreground">
-                                                    {collectionRate.toFixed(1)}%
-                                                </span>
-                                            </div>
-                                            <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden">
-                                                <div
-                                                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
-                                                    style={{ width: `${Math.min(100, Math.max(0, collectionRate))}%` }}
-                                                />
-                                            </div>
-                                            <div className="flex items-center justify-between mt-1.5 text-[10px] text-muted-foreground">
-                                                <span>
-                                                    <span className="font-bold text-foreground">{records.length}</span> total invoices on file
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Right: Past Due & Overdue Exposure */}
-                                <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card shadow-xs hover:border-border transition-all">
-                                    <div className="absolute inset-0 opacity-[0.04] bg-gradient-to-br from-rose-500 to-amber-500 pointer-events-none" />
-                                    <div className="relative p-3 sm:p-3.5 flex flex-col justify-between h-full">
-                                        <div>
-                                            <div className="flex items-center gap-2.5">
-                                                <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white shadow-xs bg-gradient-to-br from-rose-500 to-amber-500 shrink-0">
-                                                    <AlertCircle className="h-4 w-4" />
-                                                </span>
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none">
-                                                        Past Due Exposure
-                                                    </p>
-                                                    <p className="text-lg sm:text-xl font-black font-mono tracking-tight tabular-nums leading-tight mt-0.5 text-rose-600 dark:text-rose-400">
-                                                        {formatPeso(totalOverdue)}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-3 gap-1.5 mt-2.5">
-                                                <Stat
-                                                    icon={<AlertCircle className="h-2.5 w-2.5" />}
-                                                    label="Overdue"
-                                                    value={`${metrics?.overdueCount ?? 0} inv`}
-                                                    tone={metrics?.overdueCount ? "down" : "up"}
-                                                />
-                                                <Stat
-                                                    icon={<PhilippinePeso className="h-2.5 w-2.5" />}
-                                                    label="Avg Days"
-                                                    value={`${metrics?.avgOverdueDays ?? 0} days`}
-                                                    tone={metrics?.avgOverdueDays ? "down" : "neutral"}
-                                                />
-                                                <Stat
-                                                    icon={<TrendingDown className="h-2.5 w-2.5" />}
-                                                    label="Due Invoices"
-                                                    value={`${records.length - (metrics?.overdueCount ?? 0)} due`}
-                                                    tone="neutral"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-2.5 pt-2 border-t border-border/40">
-                                            <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                                                <span>Overdue Share of Outstanding</span>
-                                                <span className="tabular-nums font-mono font-bold text-foreground">
-                                                    {overdueRate.toFixed(1)}%
-                                                </span>
-                                            </div>
-                                            <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden">
-                                                <div
-                                                    className="h-full rounded-full bg-gradient-to-r from-rose-500 to-amber-500 transition-all duration-500"
-                                                    style={{ width: `${Math.min(100, Math.max(0, overdueRate))}%` }}
-                                                />
-                                            </div>
-                                            <div className="flex items-center justify-between mt-1.5 text-[10px] text-muted-foreground">
-                                                <span>
-                                                    <span className="font-bold text-rose-600 dark:text-rose-400">{metrics?.overdueCount ?? 0}</span> invoices need immediate escalation
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                    }
+                                />
+                                <MetricStat
+                                    label="Real AR Exposure"
+                                    value={formatPeso(realOutstanding)}
+                                    sub="Net outstanding balance"
+                                    icon={<AlertCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />}
+                                    type="exposure"
+                                />
+                                <MetricStat
+                                    label="Avg Days Overdue"
+                                    value={`${avgOverdue}d`}
+                                    sub={`across ${overdueCount} invoices`}
+                                    icon={<Clock className="h-3.5 w-3.5" />}
+                                    type="overdue"
+                                />
                             </div>
 
-                            {/* Compact Stacked Aging Composition Bar */}
-                            <div className="rounded-lg border border-border/60 bg-card/80 px-3 py-2 shadow-2xs">
-                                <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">
-                                    <span>Composition by Aging Range</span>
-                                    <div className="flex items-center gap-2 font-mono">
-                                        <span className="text-muted-foreground font-medium hidden sm:inline">
-                                            Total Receivable: <strong className="text-foreground">{formatPeso(totalReceivable)}</strong>
-                                        </span>
-                                        <span className="hidden sm:inline text-border">|</span>
-                                        <span className="text-foreground font-bold">
-                                            {formatPeso(totalOutstanding)} OUTSTANDING
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="h-2 w-full rounded-full overflow-hidden bg-muted flex">
-                                    {agingData.map((bucket, idx) => {
-                                        const colors = [
-                                            "bg-emerald-500", // 0-30
-                                            "bg-amber-500",   // 31-60
-                                            "bg-orange-500",  // 61-90
-                                            "bg-rose-500",    // 90+
-                                        ];
-                                        return (
-                                            <div
-                                                key={bucket.range}
-                                                className={cn("h-full transition-all duration-500", colors[idx % colors.length])}
-                                                style={{ width: `${bucket.percentage || 0}%` }}
-                                                title={`${bucket.range}: ${formatPeso(bucket.amount)} (${(bucket.percentage || 0).toFixed(1)}%)`}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                                <div className="flex items-center justify-between mt-1.5 text-[10px]">
-                                    {agingData.map((bucket, idx) => {
-                                        const dotColors = [
-                                            "bg-emerald-500",
-                                            "bg-amber-500",
-                                            "bg-orange-500",
-                                            "bg-rose-500",
-                                        ];
-                                        return (
-                                            <span key={bucket.range} className="flex items-center gap-1 text-muted-foreground font-medium">
-                                                <span className={cn("inline-block w-2 h-2 rounded-full", dotColors[idx % dotColors.length])} />
-                                                <span>{bucket.range.replace(' Days', 'd')}</span>{" "}
-                                                <span className="font-bold font-mono text-foreground">
-                                                    {(bucket.percentage || 0).toFixed(0)}%
+                            {/* Row 2: 2 Charts Side by Side */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 min-w-0">
+                                {/* Left Chart: Aging Analysis */}
+                                <Card className="border border-border/60 bg-card rounded-xl p-3 sm:p-3.5 shadow-2xs overflow-hidden flex flex-col justify-between">
+                                    <CardHeader className="p-0 pb-2.5">
+                                        <CardTitle className="text-sm font-bold text-foreground tracking-tight">
+                                            Aging Analysis
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-0 min-w-0 w-full h-[210px]">
+                                        {mounted && (
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart
+                                                    data={agingData}
+                                                    margin={{ top: 10, right: 12, left: 12, bottom: 5 }}
+                                                >
+                                                    <CartesianGrid
+                                                        strokeDasharray="3 3"
+                                                        vertical={false}
+                                                        stroke="rgba(128,128,128,0.12)"
+                                                    />
+                                                    <XAxis
+                                                        dataKey="range"
+                                                        fontSize={11}
+                                                        tickLine={false}
+                                                        axisLine={{ stroke: "rgba(128,128,128,0.2)" }}
+                                                    />
+                                                    <YAxis
+                                                        fontSize={10}
+                                                        width={110}
+                                                        tickLine={false}
+                                                        axisLine={{ stroke: "rgba(128,128,128,0.2)" }}
+                                                        tickFormatter={(val: number) =>
+                                                            `₱${val.toLocaleString("en-PH", {
+                                                                minimumFractionDigits: 2,
+                                                                maximumFractionDigits: 2,
+                                                            })}`
+                                                        }
+                                                    />
+                                                    <Tooltip
+                                                        formatter={(val: number | string | undefined) => [
+                                                            formatPeso(Number(val || 0)),
+                                                            "Amount",
+                                                        ]}
+                                                        contentStyle={{
+                                                            backgroundColor: "hsl(var(--popover))",
+                                                            borderColor: "hsl(var(--border))",
+                                                            color: "hsl(var(--popover-foreground))",
+                                                            borderRadius: "8px",
+                                                            fontSize: "12px",
+                                                        }}
+                                                        labelStyle={{ color: "hsl(var(--muted-foreground))" }}
+                                                    />
+                                                    <Bar
+                                                        dataKey="amount"
+                                                        fill="#3b82f6"
+                                                        radius={[4, 4, 0, 0]}
+                                                        maxBarSize={48}
+                                                    />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                {/* Right Chart: Outstanding by Salesman */}
+                                <Card className="border border-border/60 bg-card rounded-xl p-3 sm:p-3.5 shadow-2xs overflow-hidden flex flex-col justify-between">
+                                    <CardHeader className="p-0 pb-1">
+                                        <CardTitle className="text-sm font-bold text-foreground tracking-tight">
+                                            Outstanding by Salesman
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-0 min-w-0 w-full flex flex-col">
+                                        <div className="h-[185px] w-full min-w-0">
+                                            {mounted && (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart
+                                                        data={salesmanData}
+                                                        margin={{ top: 10, right: 8, left: 12, bottom: 35 }}
+                                                        barCategoryGap="16%"
+                                                    >
+                                                        <CartesianGrid
+                                                            strokeDasharray="3 3"
+                                                            vertical={false}
+                                                            stroke="rgba(128,128,128,0.12)"
+                                                        />
+                                                        <XAxis
+                                                            dataKey="name"
+                                                            fontSize={10}
+                                                            angle={-30}
+                                                            textAnchor="end"
+                                                            interval={0}
+                                                            tickLine={false}
+                                                            axisLine={{ stroke: "rgba(128,128,128,0.2)" }}
+                                                            tickFormatter={(v: string) =>
+                                                                v.length > 13 ? `${v.slice(0, 13)}…` : v
+                                                            }
+                                                        />
+                                                        <YAxis
+                                                            fontSize={10}
+                                                            width={110}
+                                                            tickLine={false}
+                                                            axisLine={{ stroke: "rgba(128,128,128,0.2)" }}
+                                                            tickFormatter={(v: number) =>
+                                                                `₱${v.toLocaleString("en-PH", {
+                                                                    minimumFractionDigits: 2,
+                                                                    maximumFractionDigits: 2,
+                                                                })}`
+                                                            }
+                                                        />
+                                                        <Tooltip
+                                                            content={({ active, payload, label }) => {
+                                                                if (!active || !payload?.length) return null;
+                                                                const ledgerVal = Number(payload[0]?.value || 0);
+                                                                const unpostedVal = Number(payload[1]?.value || 0);
+                                                                return (
+                                                                    <div className="bg-popover border border-border rounded-lg shadow-xl px-3 py-2 text-xs">
+                                                                        <p className="font-bold text-foreground mb-1">{label}</p>
+                                                                        <div className="space-y-1">
+                                                                            <p className="text-violet-600 dark:text-violet-400 font-semibold flex justify-between gap-4">
+                                                                                <span>Outstanding (Ledger):</span>
+                                                                                <span>{formatPeso(ledgerVal)}</span>
+                                                                            </p>
+                                                                            <p className="text-orange-500 dark:text-orange-400 font-semibold flex justify-between gap-4">
+                                                                                <span>Unposted Collections:</span>
+                                                                                <span>{formatPeso(unpostedVal)}</span>
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            }}
+                                                        />
+                                                        <Bar
+                                                            dataKey="value"
+                                                            name="Outstanding (Ledger)"
+                                                            fill="#8b5cf6"
+                                                            radius={[3, 3, 0, 0]}
+                                                            maxBarSize={22}
+                                                        />
+                                                        <Bar
+                                                            dataKey="unposted"
+                                                            name="Unposted Collections"
+                                                            fill="#f97316"
+                                                            radius={[3, 3, 0, 0]}
+                                                            maxBarSize={22}
+                                                        />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            )}
+                                        </div>
+                                        <div className="mt-2 flex items-center gap-4 pl-1 border-t border-border/40 pt-2 shrink-0">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-[#8b5cf6]" />
+                                                <span className="text-[10px] text-muted-foreground font-semibold">
+                                                    Outstanding (Ledger)
                                                 </span>
-                                            </span>
-                                        );
-                                    })}
-                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-[#f97316]" />
+                                                <span className="text-[10px] text-muted-foreground font-semibold">
+                                                    Unposted Collections
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             </div>
                         </>
                     )}

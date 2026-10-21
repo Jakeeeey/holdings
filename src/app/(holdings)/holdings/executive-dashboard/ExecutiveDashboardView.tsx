@@ -42,6 +42,7 @@ import { LostCustomerPreviewCard } from "./sales/LostCustomerPreviewCard";
 import { CollectionVsSalesPreviewCard } from "./sales/CollectionVsSalesPreviewCard";
 import { AccountsPayablePreviewCard } from "./sales/AccountsPayablePreviewCard";
 import { AccountsReceivablePreviewCard } from "./sales/AccountsReceivablePreviewCard";
+import { DistributionSalesDetailedPreviewCard } from "./sales/DistributionSalesDetailedPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -365,6 +366,16 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
                                 {section.groups.map((group) => {
                                     const cat = (group.category || "").toLowerCase();
+                                    if (cat === "distribution-sales-detailed" || cat === "distribution-sales-detail" || cat === "sales-detailed" || cat === "distribution_sales_detailed" || cat === "distribution-detailed") {
+                                        return (
+                                            <DistributionSalesDetailedPreviewCard 
+                                                key={group.id} 
+                                                group={group} 
+                                                startDate={startDate} 
+                                                endDate={endDate} 
+                                            />
+                                        );
+                                    }
                                     if (cat === "distribution-sales" || cat === "sales") {
                                         return (
                                             <GroupPreviewCard 

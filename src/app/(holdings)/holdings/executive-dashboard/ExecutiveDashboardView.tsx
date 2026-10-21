@@ -39,6 +39,7 @@ import { AgingSlobPreviewCard } from "./sales/AgingSlobPreviewCard";
 import { LogisticsPreviewCard } from "./logistics/LogisticsPreviewCard";
 import { NewCustomerPreviewCard } from "./sales/NewCustomerPreviewCard";
 import { LostCustomerPreviewCard } from "./sales/LostCustomerPreviewCard";
+import { CollectionVsSalesPreviewCard } from "./sales/CollectionVsSalesPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -78,7 +79,7 @@ const MONTHS = [
 ];
 
 export function ExecutiveDashboardView({ initialGroups }: { initialGroups: DashboardGroup[] }) {
-    const [filterMode, setFilterMode] = useState<FilterMode>("weekly");
+    const [filterMode, setFilterMode] = useState<FilterMode>("ytd");
     const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
 
     // Compute date boundaries based on selected filter mode
@@ -435,6 +436,16 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                             <LostCustomerPreviewCard 
                                                 key={group.id} 
                                                 group={group} 
+                                            />
+                                        );
+                                    }
+                                    if (cat === "collection-vs-sales" || cat === "collections-vs-sales" || cat === "collection" || cat === "collections" || cat === "collection-sales") {
+                                        return (
+                                            <CollectionVsSalesPreviewCard 
+                                                key={group.id} 
+                                                group={group} 
+                                                startDate={startDate} 
+                                                endDate={endDate} 
                                             />
                                         );
                                     }

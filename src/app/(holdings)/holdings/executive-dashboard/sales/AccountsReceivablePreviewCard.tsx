@@ -183,7 +183,7 @@ export function AccountsReceivablePreviewCard({
             setLoading(true);
             try {
                 const params = new URLSearchParams({
-                    startDate: startDate || "2020-01-01",
+                    startDate: "2020-01-01",
                     endDate: endDate || new Date().toISOString().split("T")[0],
                 });
 

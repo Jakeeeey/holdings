@@ -44,6 +44,25 @@ interface DirectusPayment {
   paid_amount?: number | null;
 }
 
+interface DirectusReturn {
+  invoice_no: number;
+  amount?: number | null;
+}
+
+interface DirectusMemo {
+  invoice_id: number;
+  amount?: number | null;
+  memo_id?: {
+    type?: number | null;
+    status?: string | null;
+  } | null;
+}
+
+interface DirectusUnfulfilled {
+  sales_invoice_id: number;
+  variance_amount?: number | null;
+}
+
 interface DirectusCollection {
   id: number;
   salesman_id?: number | null;
@@ -127,6 +146,8 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const dateFrom = searchParams.get("startDate") || searchParams.get("dateFrom");
     const dateTo = searchParams.get("endDate") || searchParams.get("dateTo");
+    const arStatusFilter = searchParams.get("arStatus");
+    const txStatusFilter = searchParams.get("transactionStatus");
 
     const invoiceFields = [
       "invoice_id",
@@ -147,97 +168,166 @@ export async function GET(
       "transaction_status",
     ].join(",");
 
+    async function fetchAllSalesInvoices(urlBase: string): Promise<DirectusInvoice[]> {
+      const all: DirectusInvoice[] = [];
+      let offset = 0;
+      while (true) {
+        const url = `${urlBase}&limit=500&offset=${offset}`;
+        const res = await fetch(url, { headers, cache: "no-store" });
+        if (!res.ok) break;
+        const json = await res.json();
+        const rows = json.data || [];
+        all.push(...rows);
+        if (rows.length < 500) break;
+        offset += 500;
+      }
+      return all;
+    }
+
+    async function fetchAllChunked<T>(
+      baseUrl: string,
+      idField: string,
+      ids: (number | string)[],
+      chunkSize = 300,
+      concurrency = 5
+    ): Promise<T[]> {
+      if (ids.length === 0) return [];
+      const chunks: (number | string)[][] = [];
+      for (let i = 0; i < ids.length; i += chunkSize) chunks.push(ids.slice(i, i + chunkSize));
+      const results: T[] = [];
+      for (let i = 0; i < chunks.length; i += concurrency) {
+        const batch = chunks.slice(i, i + concurrency);
+        const batchResults = await Promise.all(
+          batch.map(async (chunk) => {
+            const sep = baseUrl.includes("?") ? "&" : "?";
+            const url = `${baseUrl}${sep}filter[${idField}][_in]=${chunk.join(",")}`;
+            const res = await fetch(url, { headers, cache: "no-store" });
+            if (!res.ok) return [];
+            const j = await res.json();
+            return (j.data || []) as T[];
+          })
+        );
+        results.push(...batchResults.flat());
+      }
+      return results;
+    }
+
     const baseFilter = [
-      "filter[payment_status][_nin]=Paid,Fully Paid,Void,VOID",
+      "filter[payment_status][_nin]=Paid,Fully Paid,Void,VOID,Cancelled,CANCELLED,Cancelled%20-%20Old%20Invoice,CANCELLED%20-%20OLD%20INVOICE",
       "filter[_or][0][isPosted][_null]=true",
       "filter[_or][1][isPosted][_eq]=false",
-      "filter[_and][0][_or][0][transaction_status][_nin]=Cancelled,CANCELLED,Void,VOID,void",
+      "filter[_and][0][_or][0][transaction_status][_nin]=Cancelled,CANCELLED,Void,VOID,void,Not%20Fulfilled,NOT%20FULFILLED,Cancelled%20-%20Old%20Invoice,CANCELLED%20-%20OLD%20INVOICE,cancelled%20-%20old%20invoice",
       "filter[_and][0][_or][1][transaction_status][_null]=true",
     ].join("&");
 
-    let invoiceUrl = `${directusUrl}/items/sales_invoice?${baseFilter}&limit=5000&fields=${invoiceFields}&sort=-invoice_date,-invoice_id`;
+    let invoiceUrl = `${directusUrl}/items/sales_invoice?${baseFilter}&fields=${invoiceFields}&sort=-invoice_date,-invoice_id`;
     if (dateFrom && dateTo && dateFrom !== "2020-01-01") {
       invoiceUrl += `&filter[invoice_date][_between]=[${dateFrom},${dateTo}]`;
     }
 
-    // 1. Fetch invoices and lookups in parallel
-    const [invRes, colRes, colInvRes, custRes, salesRes, divRes, payRes] = await Promise.allSettled([
-      fetch(invoiceUrl, { headers, cache: "no-store" }),
-      fetch(`${directusUrl}/items/collection?limit=2000&fields=id,salesman_id,totalAmount&filter[isPosted][_neq]=true&filter[isCancelled][_neq]=true`, { headers, cache: "no-store" }),
-      fetch(`${directusUrl}/items/collection_invoices?limit=5000&fields=collection_id,invoice_id,amount`, { headers, cache: "no-store" }),
-      fetch(`${directusUrl}/items/customer?fields=customer_code,customer_name&limit=3000`, { headers, cache: "no-store" }),
-      fetch(`${directusUrl}/items/salesman?fields=id,salesman_name,division_id&limit=500`, { headers, cache: "no-store" }),
-      fetch(`${directusUrl}/items/division?fields=division_id,division_name&limit=200`, { headers, cache: "no-store" }),
-      fetch(`${directusUrl}/items/sales_invoice_payments?fields=invoice_id,paid_amount&limit=5000`, { headers, cache: "no-store" }),
+    // Phase 1: Fetch invoices, unposted collections, and master tables
+    const [invoices, unpostedCollections, custRes, salesRes, divRes] = await Promise.all([
+      fetchAllSalesInvoices(invoiceUrl),
+      fetch(`${directusUrl}/items/collection?limit=-1&fields=id,salesman_id,totalAmount&filter[isPosted][_neq]=true&filter[isCancelled][_neq]=true`, { headers, cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : { data: [] }))
+        .then((j) => (j.data || []) as DirectusCollection[])
+        .catch(() => [] as DirectusCollection[]),
+      fetch(`${directusUrl}/items/customer?fields=customer_code,customer_name&limit=-1`, { headers, cache: "no-store" }),
+      fetch(`${directusUrl}/items/salesman?fields=id,salesman_name,division_id&limit=-1`, { headers, cache: "no-store" }),
+      fetch(`${directusUrl}/items/division?fields=division_id,division_name&limit=-1`, { headers, cache: "no-store" }),
     ]);
 
-    let invoices: DirectusInvoice[] = [];
-    if (invRes.status === "fulfilled" && invRes.value.ok) {
-      const invData = await invRes.value.json();
-      invoices = invData.data || [];
-    }
+    const invoiceIds = invoices.map((inv) => inv.invoice_id);
+    const unpostedPouchIds = unpostedCollections.map((c) => c.id);
 
-    const unpostedCollections: DirectusCollection[] =
-      colRes.status === "fulfilled" && colRes.value.ok ? (await colRes.value.json()).data || [] : [];
-
-    const collectionInvoices: DirectusCollectionInvoice[] =
-      colInvRes.status === "fulfilled" && colInvRes.value.ok ? (await colInvRes.value.json()).data || [] : [];
+    // Phase 2: Fetch related records chunked by invoice_id / pouch_id (matches FM _arFetchAndDerive exactly)
+    const [payments, returns_, memos, unfulfilled, collectionInvoices] = await Promise.all([
+      fetchAllChunked<DirectusPayment>(`${directusUrl}/items/sales_invoice_payments?limit=-1&fields=invoice_id,paid_amount`, "invoice_id", invoiceIds),
+      fetchAllChunked<DirectusReturn>(`${directusUrl}/items/sales_invoice_sales_return?limit=-1&fields=invoice_no,amount`, "invoice_no", invoiceIds),
+      fetchAllChunked<DirectusMemo>(`${directusUrl}/items/customer_memo_invoices?limit=-1&fields=invoice_id,amount,memo_id.type,memo_id.status`, "invoice_id", invoiceIds),
+      fetchAllChunked<DirectusUnfulfilled>(`${directusUrl}/items/unfulfilled_sales_transaction?limit=-1&fields=sales_invoice_id,variance_amount`, "sales_invoice_id", invoiceIds),
+      fetchAllChunked<DirectusCollectionInvoice>(`${directusUrl}/items/collection_invoices?limit=-1&fields=collection_id,invoice_id,amount`, "collection_id", unpostedPouchIds),
+    ]);
 
     const customersMap = new Map<string, string>();
-    if (custRes.status === "fulfilled" && custRes.value.ok) {
-      const cData = (await custRes.value.json()).data || [];
+    if (custRes.ok) {
+      const cData = (await custRes.json()).data || [];
       cData.forEach((c: DirectusCustomer) => {
         if (c.customer_code) customersMap.set(c.customer_code.trim(), c.customer_name);
       });
     }
 
     const salesmenMap = new Map<number, DirectusSalesman>();
-    if (salesRes.status === "fulfilled" && salesRes.value.ok) {
-      const sData = (await salesRes.value.json()).data || [];
+    if (salesRes.ok) {
+      const sData = (await salesRes.json()).data || [];
       sData.forEach((s: DirectusSalesman) => {
         if (s.id) salesmenMap.set(s.id, s);
       });
     }
 
     const divisionsMap = new Map<number, string>();
-    if (divRes.status === "fulfilled" && divRes.value.ok) {
-      const dData = (await divRes.value.json()).data || [];
+    if (divRes.ok) {
+      const dData = (await divRes.json()).data || [];
       dData.forEach((d: DirectusDivision) => {
         if (d.division_id) divisionsMap.set(d.division_id, d.division_name);
       });
     }
 
+    // Payment aggregations
     const paymentsMap = new Map<number, number>();
-    if (payRes.status === "fulfilled" && payRes.value.ok) {
-      const pData = (await payRes.value.json()).data || [];
-      pData.forEach((p: DirectusPayment) => {
-        if (p.invoice_id) {
-          const cur = paymentsMap.get(p.invoice_id) || 0;
-          paymentsMap.set(p.invoice_id, cur + asNumber(p.paid_amount));
-        }
-      });
-    }
+    payments.forEach((p) => {
+      if (p.invoice_id) {
+        paymentsMap.set(p.invoice_id, (paymentsMap.get(p.invoice_id) || 0) + asNumber(p.paid_amount));
+      }
+    });
 
-    // Unposted collections pool & salesman map
-    const unpostedPouchIds = new Set(unpostedCollections.map((c) => c.id));
+    // Return aggregations (invoice_no in sales_invoice_sales_return corresponds to invoice_id)
+    const returnAgg = new Map<number, number>();
+    returns_.forEach((r) => {
+      if (r.invoice_no) {
+        returnAgg.set(r.invoice_no, (returnAgg.get(r.invoice_no) || 0) + asNumber(r.amount));
+      }
+    });
+
+    // Credit and Debit Memo aggregations (type 1 = credit, type 0 or 2 = debit)
+    const creditAgg = new Map<number, number>();
+    const debitAgg = new Map<number, number>();
+    memos.forEach((m) => {
+      if (!m.memo_id || m.memo_id.status !== "APPROVED") return;
+      const type = Number(m.memo_id.type);
+      const amt = asNumber(m.amount);
+      if (type === 1) {
+        creditAgg.set(m.invoice_id, (creditAgg.get(m.invoice_id) || 0) + amt);
+      } else if (type === 0 || type === 2) {
+        debitAgg.set(m.invoice_id, (debitAgg.get(m.invoice_id) || 0) + amt);
+      }
+    });
+
+    // Unfulfilled transaction aggregations
+    const unfulfilledAgg = new Map<number, number>();
+    unfulfilled.forEach((u) => {
+      if (u.sales_invoice_id) {
+        unfulfilledAgg.set(u.sales_invoice_id, (unfulfilledAgg.get(u.sales_invoice_id) || 0) + asNumber(u.variance_amount));
+      }
+    });
+
+    // Unposted collections pool & salesman unposted map
+    const unpostedPouchIdSet = new Set(unpostedPouchIds);
     let totalUnposted = 0;
-    const salesmanUnpostedMap = new Map<number, number>();
+    const salesmanUnpostedMap = new Map<string, number>();
 
     for (const c of unpostedCollections) {
       const amt = asNumber(c.totalAmount);
       totalUnposted += amt;
-      if (c.salesman_id) {
-        const cur = salesmanUnpostedMap.get(c.salesman_id) || 0;
-        salesmanUnpostedMap.set(c.salesman_id, cur + amt);
-      }
+      const sName = c.salesman_id ? (salesmenMap.get(c.salesman_id)?.salesman_name || "Unknown") : "Unknown";
+      salesmanUnpostedMap.set(sName, (salesmanUnpostedMap.get(sName) || 0) + amt);
     }
 
     // Invoice-level unposted allocation
     const unpostedInvoiceAllocMap = new Map<number, number>();
     for (const ci of collectionInvoices) {
-      if (ci.collection_id && unpostedPouchIds.has(ci.collection_id) && ci.invoice_id) {
-        const cur = unpostedInvoiceAllocMap.get(ci.invoice_id) || 0;
-        unpostedInvoiceAllocMap.set(ci.invoice_id, cur + asNumber(ci.amount));
+      if (ci.collection_id && unpostedPouchIdSet.has(ci.collection_id) && ci.invoice_id) {
+        unpostedInvoiceAllocMap.set(ci.invoice_id, (unpostedInvoiceAllocMap.get(ci.invoice_id) || 0) + asNumber(ci.amount));
       }
     }
 
@@ -258,7 +348,7 @@ export async function GET(
       { range: "90+ Days", amount: 0 },
     ];
 
-    const salesmanOutstandingMap = new Map<number, number>();
+    const salesmanOutstandingMap = new Map<string, number>();
     const rows = [];
 
     for (const inv of invoices) {
@@ -267,11 +357,18 @@ export async function GET(
       const txStatus = (inv.transaction_status || "").trim().toUpperCase();
       const payStatus = (inv.payment_status || "").trim().toUpperCase();
       if (
+        txStatus === "NOT FULFILLED" ||
+        txStatus === "NOT_FULFILLED" ||
         txStatus === "CANCELLED" ||
+        txStatus.startsWith("CANCELLED -") ||
+        txStatus.includes("OLD INVOICE") ||
         txStatus === "VOID" ||
         txStatus === "VOIDED" ||
         payStatus === "VOID" ||
-        payStatus === "VOIDED"
+        payStatus === "VOIDED" ||
+        payStatus === "CANCELLED" ||
+        payStatus.startsWith("CANCELLED -") ||
+        payStatus.includes("OLD INVOICE")
       ) {
         continue;
       }
@@ -287,26 +384,20 @@ export async function GET(
         ? divisionsMap.get(salesmanInfo.division_id) || "General"
         : "General";
 
-      const totalAmt = asNumber(inv.total_amount ?? inv.net_amount ?? inv.gross_amount);
-      const discount = asNumber(inv.discount_amount);
-      const netReceivable = Math.max(0, totalAmt - discount);
+      // Match FM netReceivable & outstandingBalance calculation exactly
+      const grossAmount = asNumber(inv.gross_amount);
+      const discountAmount = asNumber(inv.discount_amount);
+      const netReceivable = grossAmount - discountAmount;
 
+      const returnAmount = returnAgg.get(invId) || 0;
+      const creditMemos = creditAgg.get(invId) || 0;
+      const debitMemos = debitAgg.get(invId) || 0;
+      const unfulfilledAmount = unfulfilledAgg.get(invId) || 0;
       const paid = paymentsMap.get(invId) || 0;
-      const outstanding = Math.max(0, netReceivable - paid);
 
-      if (outstanding <= 0.01) continue;
+      const outstanding = Math.max(0, netReceivable - returnAmount - creditMemos + debitMemos - unfulfilledAmount - paid);
 
-      totalReceivable += netReceivable;
-      totalOutstanding += outstanding;
-
-      if (inv.transaction_status === "Cancellation Requested") {
-        totalPendingCancellation += outstanding;
-      }
-
-      if (inv.salesman_id) {
-        const cur = salesmanOutstandingMap.get(inv.salesman_id) || 0;
-        salesmanOutstandingMap.set(inv.salesman_id, cur + outstanding);
-      }
+      if (outstanding <= 0.001) continue;
 
       // Credit terms in days between invoice_date and due_date
       let termDays = 0;
@@ -337,8 +428,21 @@ export async function GET(
         }
       }
 
-      // Aging bucket assignment
-      if (daysOverdue !== null && daysOverdue >= 0) {
+      const status = daysOverdue !== null && daysOverdue >= 0 ? "Overdue" : "Due";
+      if (arStatusFilter && status !== arStatusFilter) continue;
+      if (txStatusFilter && (inv.transaction_status || "").trim() !== txStatusFilter) continue;
+
+      totalReceivable += netReceivable;
+      totalOutstanding += outstanding;
+
+      if (inv.transaction_status === "Cancellation Requested") {
+        totalPendingCancellation += outstanding;
+      }
+
+      salesmanOutstandingMap.set(salesmanName, (salesmanOutstandingMap.get(salesmanName) || 0) + outstanding);
+
+      // Aging bucket assignment (matches FM deriveFilteredAging exactly)
+      if (daysOverdue !== null && daysOverdue >= 0 && outstanding > 0) {
         totalOverdue += outstanding;
         overdueCount++;
         overdueDaysSum += daysOverdue;
@@ -347,11 +451,8 @@ export async function GET(
         else if (daysOverdue <= 60) agingData[1].amount += outstanding;
         else if (daysOverdue <= 90) agingData[2].amount += outstanding;
         else agingData[3].amount += outstanding;
-      } else {
-        agingData[0].amount += outstanding; // Current / not yet overdue
       }
 
-      const status = daysOverdue !== null && daysOverdue > 0 ? "Overdue" : "Due";
       const unpostedAlloc = unpostedInvoiceAllocMap.get(invId) || 0;
 
       rows.push({
@@ -362,8 +463,8 @@ export async function GET(
         customerCode: custCode,
         invoiceDate: inv.invoice_date || "",
         calculatedDueDate: calculatedDueDate || "",
-        grossAmount: totalAmt,
-        discountAmount: discount,
+        grossAmount,
+        discountAmount,
         netReceivable,
         totalPaid: paid,
         outstandingBalance: outstanding,
@@ -384,10 +485,10 @@ export async function GET(
 
     // Top salesmen chart data
     const salesmanData = Array.from(salesmanOutstandingMap.entries())
-      .map(([sId, val]) => ({
-        name: salesmenMap.get(sId)?.salesman_name || `Salesman #${sId}`,
+      .map(([name, val]) => ({
+        name,
         value: val,
-        unposted: salesmanUnpostedMap.get(sId) || 0,
+        unposted: salesmanUnpostedMap.get(name) || 0,
       }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);

@@ -17,8 +17,13 @@ interface ARFilterBarProps {
   setDateFrom: (v: string) => void;
   dateTo: string;
   setDateTo: (v: string) => void;
-  status: string;
-  setStatus: (v: string) => void;
+  status?: string;
+  setStatus?: (v: string) => void;
+  arStatus?: string;
+  setArStatus?: (v: string) => void;
+  transactionStatus?: string;
+  setTransactionStatus?: (v: string) => void;
+  transactionStatusOptions?: string[];
   salesman: string;
   setSalesman: (v: string) => void;
   salesmanOptions: string[];
@@ -36,6 +41,11 @@ export function ARFilterBar({
   setDateTo,
   status,
   setStatus,
+  arStatus,
+  setArStatus,
+  transactionStatus,
+  setTransactionStatus,
+  transactionStatusOptions = [],
   salesman,
   setSalesman,
   salesmanOptions,
@@ -121,26 +131,75 @@ export function ARFilterBar({
         </div>
       )}
 
-      {/* Status Select */}
-      <div className="w-[120px] shrink-0">
-        <Select
-          value={status || 'all'}
-          onValueChange={(val) => {
-            setStatus(val === 'all' ? '' : val);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="h-8 text-xs bg-background">
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="Due">Due</SelectItem>
-            <SelectItem value="Overdue">Overdue</SelectItem>
-            <SelectItem value="Paid">Paid</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Legacy Status Select */}
+      {setStatus && !setArStatus && (
+        <div className="w-[120px] shrink-0">
+          <Select
+            value={status || 'all'}
+            onValueChange={(val) => {
+              setStatus(val === 'all' ? '' : val);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="h-8 text-xs bg-background">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="Due">Due</SelectItem>
+              <SelectItem value="Overdue">Overdue</SelectItem>
+              <SelectItem value="Paid">Paid</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* AR Status Select */}
+      {setArStatus && (
+        <div className="w-[130px] shrink-0">
+          <Select
+            value={arStatus || 'all'}
+            onValueChange={(val) => {
+              setArStatus(val === 'all' ? '' : val);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="h-8 text-xs bg-background">
+              <SelectValue placeholder="All AR Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All AR Statuses</SelectItem>
+              <SelectItem value="Due">Due</SelectItem>
+              <SelectItem value="Overdue">Overdue</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Transaction Status Select */}
+      {setTransactionStatus && transactionStatusOptions.length > 0 && (
+        <div className="w-[150px] shrink-0">
+          <Select
+            value={transactionStatus || 'all'}
+            onValueChange={(val) => {
+              setTransactionStatus(val === 'all' ? '' : val);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="h-8 text-xs bg-background">
+              <SelectValue placeholder="All Tx Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tx Statuses</SelectItem>
+              {transactionStatusOptions.map((tx) => (
+                <SelectItem key={tx} value={tx} className="text-xs">
+                  {tx}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Reset Button */}
       {isFiltered && (

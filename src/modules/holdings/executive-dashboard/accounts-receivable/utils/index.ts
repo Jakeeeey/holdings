@@ -39,7 +39,17 @@ export function calculateDaysOverdue(dueDateStr?: string | null): number | null 
 }
 
 export function transformRawInvoices(rows: RawInvoiceRow[]): Invoice[] {
-  return rows.map((r, index) => {
+  const validRows = rows.filter((row) => {
+    const tx = String(row.transactionStatus || row.transaction_status || "").trim().toUpperCase();
+    const pay = String(row.paymentStatus || row.payment_status || "").trim().toUpperCase();
+    if (tx === "NOT FULFILLED" || tx === "NOT_FULFILLED") return false;
+    if (tx === "CANCELLED" || tx.startsWith("CANCELLED -") || tx.includes("OLD INVOICE")) return false;
+    if (tx === "VOID" || tx === "VOIDED") return false;
+    if (pay === "VOID" || pay === "VOIDED" || pay === "CANCELLED" || pay.startsWith("CANCELLED -") || pay.includes("OLD INVOICE")) return false;
+    return true;
+  });
+
+  return validRows.map((r, index) => {
     const id = String(r.invoiceId ?? r.invoice_id ?? r.id ?? index);
     const invoiceNo = String(r.invoiceNo ?? r.invoice_no ?? `INV-${id}`);
     const orderId = String(r.orderId ?? r.order_id ?? '—');

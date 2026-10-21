@@ -101,6 +101,8 @@ export interface ARFilterOptions {
   salesmen: string[];
   divisions: string[];
   statuses: string[];
+  transactionStatuses?: string[];
+  arStatuses?: string[];
 }
 
 export interface ARTableFilters {
@@ -111,6 +113,8 @@ export interface ARTableFilters {
   division?: string;
   status?: string;
   search?: string;
+  arStatus?: string;
+  transactionStatus?: string;
 }
 
 export interface ARFullPayload {

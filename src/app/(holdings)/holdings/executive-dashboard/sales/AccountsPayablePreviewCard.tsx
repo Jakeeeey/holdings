@@ -1,14 +1,33 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { Wallet, TrendingDown, ChevronRight, Briefcase, PhilippinePeso, Clock } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+    Briefcase,
+    Wallet,
+    PhilippinePeso,
+    AlertCircle,
+    TrendingUp,
+    Download,
+    ChevronRight,
+    ListChecks,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
-import { transformAPRows, deriveMetrics, buildCategoryBreakdown } from "@/modules/holdings/executive-dashboard/accounts-payable/utils";
-import type { RawAPRow, APMetrics, APCategoryBreakdown } from "@/modules/holdings/executive-dashboard/accounts-payable/types";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+    transformAPRows,
+    deriveMetrics,
+    buildCategoryBreakdown,
+    formatPeso,
+} from "@/modules/holdings/executive-dashboard/accounts-payable/utils";
+import type {
+    RawAPRow,
+    APRecord,
+    APMetrics,
+    APCategoryBreakdown,
+} from "@/modules/holdings/executive-dashboard/accounts-payable/types";
 
 interface AccountsPayablePreviewCardProps {
     group: { id: number; group_name: string; [key: string]: unknown };
@@ -16,17 +35,133 @@ interface AccountsPayablePreviewCardProps {
     endDate?: string;
 }
 
-function formatPhpShort(amount: number): string {
-    if (amount >= 1_000_000_000) {
-        return `₱${(amount / 1_000_000_000).toFixed(2)}B`;
-    }
-    if (amount >= 1_000_000) {
-        return `₱${(amount / 1_000_000).toFixed(2)}M`;
-    }
-    if (amount >= 1_000) {
-        return `₱${(amount / 1_000).toFixed(1)}k`;
-    }
-    return `₱${amount.toFixed(0)}`;
+function Stat({
+    icon,
+    label,
+    value,
+    tone,
+}: {
+    icon: React.ReactNode;
+    label: string;
+    value: string;
+    tone?: "up" | "down" | "neutral";
+}) {
+    return (
+        <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
+            <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-muted-foreground">
+                {icon}
+                {label}
+            </div>
+            <p
+                className={cn(
+                    "text-xs font-bold tabular-nums truncate mt-0.5",
+                    tone === "up" && "text-emerald-600 dark:text-emerald-400",
+                    tone === "down" && "text-rose-600 dark:text-rose-400",
+                    (!tone || tone === "neutral") && "text-foreground"
+                )}
+                title={value}
+            >
+                {value}
+            </p>
+        </div>
+    );
+}
+
+function CategoryCard({
+    data,
+    label,
+    icon,
+    gradient,
+}: {
+    data: APCategoryBreakdown;
+    label: "Trade" | "Non-Trade";
+    icon: React.ReactNode;
+    gradient: string;
+}) {
+    const { totalPayable, totalPaid, totalOutstanding, totalRecords, overdueCount, paidPct } = data;
+    const deltaTone = paidPct >= 80 ? "up" : paidPct >= 40 ? "neutral" : "down";
+
+    return (
+        <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm hover:border-border transition-all">
+            {/* Ambient subtle glow */}
+            <div
+                className={cn("absolute inset-0 opacity-[0.05] pointer-events-none", gradient)}
+                aria-hidden
+            />
+            <div className="relative p-5 sm:p-6 flex flex-col justify-between h-full">
+                <div>
+                    <div className="flex items-center gap-3">
+                        <span
+                            className={cn(
+                                "flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm shrink-0",
+                                gradient
+                            )}
+                        >
+                            {icon}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                {label} Payables
+                            </p>
+                            <p className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums leading-tight">
+                                {formatPeso(totalOutstanding)}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2.5 mt-5">
+                        <Stat
+                            icon={<PhilippinePeso className="h-3 w-3" />}
+                            label="Payable"
+                            value={formatPeso(totalPayable)}
+                        />
+                        <Stat
+                            icon={<Wallet className="h-3 w-3" />}
+                            label="Paid"
+                            value={formatPeso(totalPaid)}
+                            tone="up"
+                        />
+                        <Stat
+                            icon={
+                                overdueCount > 0 ? (
+                                    <AlertCircle className="h-3 w-3 text-rose-500" />
+                                ) : (
+                                    <TrendingUp className="h-3 w-3 text-emerald-500" />
+                                )
+                            }
+                            label={overdueCount > 0 ? "Overdue" : "Healthy"}
+                            value={`${overdueCount} inv`}
+                            tone={overdueCount > 0 ? "down" : "up"}
+                        />
+                    </div>
+                </div>
+
+                <div className="mt-5 pt-3 border-t border-border/40">
+                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                        <span>Settlement Rate</span>
+                        <span className="tabular-nums font-mono font-bold text-foreground">
+                            {paidPct.toFixed(1)}%
+                        </span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden">
+                        <div
+                            className={cn(
+                                "h-full rounded-full transition-all duration-500",
+                                deltaTone === "up" && "bg-gradient-to-r from-emerald-500 to-emerald-400",
+                                deltaTone === "down" && "bg-gradient-to-r from-rose-500 to-rose-400",
+                                deltaTone === "neutral" && "bg-gradient-to-r from-amber-500 to-amber-400"
+                            )}
+                            style={{ width: `${Math.max(0, Math.min(100, paidPct))}%` }}
+                        />
+                    </div>
+
+                    <p className="mt-3 text-[11px] text-muted-foreground font-medium">
+                        <span className="font-bold text-foreground">{totalRecords}</span> records on file
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export function AccountsPayablePreviewCard({
@@ -35,9 +170,8 @@ export function AccountsPayablePreviewCard({
     endDate,
 }: AccountsPayablePreviewCardProps) {
     const [loading, setLoading] = useState(true);
+    const [records, setRecords] = useState<APRecord[]>([]);
     const [metrics, setMetrics] = useState<APMetrics | null>(null);
-    const [breakdowns, setBreakdowns] = useState<APCategoryBreakdown[]>([]);
-    const [overdueCount, setOverdueCount] = useState(0);
 
     useEffect(() => {
         let isMounted = true;
@@ -46,13 +180,13 @@ export function AccountsPayablePreviewCard({
             setLoading(true);
             try {
                 const params = new URLSearchParams({
-                    startDate: startDate || '2020-01-01',
-                    endDate: endDate || new Date().toISOString().split('T')[0],
+                    startDate: startDate || "2020-01-01",
+                    endDate: endDate || new Date().toISOString().split("T")[0],
                 });
 
                 const res = await fetch(
                     `/api/holdings/executive-dashboard/sales/${group.id}/accounts-payable?${params}`,
-                    { credentials: 'include' }
+                    { credentials: "include" }
                 );
                 if (!res.ok) throw new Error(`Request failed: ${res.status}`);
 
@@ -61,18 +195,11 @@ export function AccountsPayablePreviewCard({
                     ? result
                     : (result.rows ?? result.data ?? result.content ?? result.transactions ?? []);
 
-                const records = transformAPRows(rows);
+                const parsed = transformAPRows(rows);
                 if (!isMounted) return;
 
-                const derived = deriveMetrics(records);
-                const cats = buildCategoryBreakdown(records);
-                const overdue = records.filter(
-                    (r) => r.aging !== null && r.aging >= 0 && r.outstandingBalance > 0
-                ).length;
-
-                setMetrics(derived);
-                setBreakdowns(cats);
-                setOverdueCount(overdue);
+                setRecords(parsed);
+                setMetrics(deriveMetrics(parsed));
             } catch (err) {
                 if (isMounted) {
                     console.warn(`AP metrics pending for group ${group.id}:`, err);
@@ -91,136 +218,225 @@ export function AccountsPayablePreviewCard({
         };
     }, [group.id, startDate, endDate]);
 
-    const totalPayable = metrics?.totalPayable ?? 0;
-    const totalPaid = metrics?.totalPaid ?? 0;
-    const totalOutstanding = metrics?.totalOutstanding ?? 0;
-    const settlementRate = totalPayable > 0 ? (totalPaid / totalPayable) * 100 : 0;
-    const safeSettlementRate = Math.min(100, Math.max(0, settlementRate));
+    const [trade, nonTrade] = useMemo(() => {
+        const breakdown = buildCategoryBreakdown(records);
+        return [breakdown[0], breakdown[1]];
+    }, [records]);
 
-    const tradeCat = breakdowns.find((b) => b.category === "Trade");
-    const nonTradeCat = breakdowns.find((b) => b.category === "Non-Trade");
+    const totalOutstanding = (trade?.totalOutstanding ?? 0) + (nonTrade?.totalOutstanding ?? 0);
+    const tradePct = totalOutstanding > 0 ? ((trade?.totalOutstanding ?? 0) / totalOutstanding) * 100 : 0;
+    const nonTradePct = totalOutstanding > 0 ? ((nonTrade?.totalOutstanding ?? 0) / totalOutstanding) * 100 : 0;
+
+    const exportToPDF = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+            import("jspdf"),
+            import("jspdf-autotable"),
+        ]);
+        const doc = new jsPDF({ orientation: "landscape" });
+        const pageW = doc.internal.pageSize.getWidth();
+        const total = metrics?.totalPayable ?? 0;
+        const formattedTotal = `PHP ${total.toLocaleString("en-PH", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        })}`;
+
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(20, 20, 20);
+        doc.text(`Accounts Payable Summary (${group.group_name || "Holdings"})`, 14, 16);
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        const totalLabel = `Grand Total: ${formattedTotal}`;
+        const totalLabelX = Math.max(pageW / 2, pageW - 14 - doc.getTextWidth(totalLabel));
+        doc.text(totalLabel, totalLabelX, 16);
+
+        doc.setDrawColor(180, 180, 180);
+        doc.setLineWidth(0.3);
+        doc.line(14, 20, pageW - 14, 20);
+
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text(
+            `Exported: ${new Date().toLocaleString("en-PH")}   Total Records: ${records.length}`,
+            14,
+            26
+        );
+
+        autoTable(doc, {
+            startY: 32,
+            headStyles: { fillColor: [24, 24, 27], fontSize: 7, textColor: 255 },
+            bodyStyles: { fontSize: 7 },
+            alternateRowStyles: { fillColor: [245, 245, 245] },
+            head: [[
+                "Ref. No.", "Supplier", "Invoice No.", "Division", "Due Date",
+                "Amount Payable (PHP)", "Amount Paid (PHP)", "Outstanding (PHP)", "Status", "Category"
+            ]],
+            body: records.slice(0, 500).map((r) => [
+                r.refNo,
+                r.supplier,
+                r.invoiceNo !== "—" ? r.invoiceNo : "",
+                r.division,
+                r.dueDate ? r.dueDate.split(" ")[0] : "—",
+                r.amountPayable.toLocaleString("en-PH", { minimumFractionDigits: 2 }),
+                r.amountPaid.toLocaleString("en-PH", { minimumFractionDigits: 2 }),
+                r.outstandingBalance.toLocaleString("en-PH", { minimumFractionDigits: 2 }),
+                r.status,
+                r.apCategory,
+            ]),
+            margin: { left: 14, right: 14 },
+        });
+
+        doc.save(`ap-summary-${group.id}-${new Date().toISOString().split("T")[0]}.pdf`);
+    };
+
+    const targetUrl = `/holdings/executive-dashboard/sales/${group.id}/accounts-payable`;
 
     return (
-        <Link
-            href={`/holdings/executive-dashboard/sales/${group.id}/accounts-payable`}
-            className="block h-full cursor-pointer group"
-        >
-            <Card className="relative overflow-hidden border border-border/50 bg-card hover:border-amber-500/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-full rounded-2xl shadow-sm min-h-[290px]">
-                {/* Background ambient glow */}
-                <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:bg-amber-500/10 transition-colors duration-500 pointer-events-none" />
-                <div className="absolute -right-4 -top-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity duration-300 pointer-events-none">
-                    <Wallet className="h-36 w-36 text-foreground" />
-                </div>
-
-                {/* Header */}
-                <CardHeader className="border-b border-border/40 pb-3 pt-5 px-6 bg-muted/10 relative z-10">
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                                <CardTitle className="text-xl font-bold tracking-tight text-foreground truncate">
+        <div className="col-span-1 lg:col-span-2 xl:col-span-3 w-full">
+            <Card className="relative overflow-hidden border border-border/60 bg-card rounded-2xl shadow-sm hover:border-primary/40 hover:shadow-xl transition-all duration-300">
+                <CardContent className="p-4 sm:p-6 space-y-4">
+                    {/* Header Banner */}
+                    <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-sky-500/5 via-indigo-500/5 to-amber-500/5 px-5 sm:px-7 py-5 sm:py-6">
+                        <div
+                            className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-gradient-to-br from-sky-500/20 to-indigo-500/20 blur-3xl pointer-events-none"
+                            aria-hidden
+                        />
+                        <div
+                            className="absolute -right-8 -bottom-16 h-56 w-56 rounded-full bg-gradient-to-br from-amber-500/15 to-rose-500/15 blur-3xl pointer-events-none"
+                            aria-hidden
+                        />
+                        <div className="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                                    Financial Monitoring
+                                </p>
+                                <h2 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight text-foreground">
                                     {group.group_name || "Accounts Payable"}
-                                </CardTitle>
-                                {overdueCount > 0 && (
-                                    <Badge
-                                        variant="outline"
-                                        className="text-[9px] uppercase font-bold tracking-wider text-rose-500 border-rose-500/30 bg-rose-500/5 shrink-0"
-                                    >
-                                        {overdueCount} Overdue
-                                    </Badge>
-                                )}
+                                </h2>
+                                <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-2xl font-medium">
+                                    Trade vs Non-Trade payables, aging analysis, and supplier exposure at a glance.
+                                </p>
                             </div>
-                            <p className="text-xs text-muted-foreground font-medium">
-                                Trade vs Non-Trade payables, aging, and supplier exposure
-                            </p>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 group-hover:scale-105 transition-transform shrink-0">
-                            <Wallet className="h-5 w-5" />
+                            <div className="flex items-center gap-2 self-start sm:self-auto">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={exportToPDF}
+                                    className="h-9 px-3 text-xs gap-1.5 shadow-sm"
+                                    disabled={loading || records.length === 0}
+                                >
+                                    <Download className="h-3.5 w-3.5" />
+                                    Export PDF
+                                </Button>
+                                <Button asChild size="sm" className="h-9 px-3.5 text-xs gap-1.5 font-bold shadow-sm">
+                                    <Link href={targetUrl}>
+                                        View Full Report
+                                        <ChevronRight className="h-3.5 w-3.5" />
+                                    </Link>
+                                </Button>
+                            </div>
                         </div>
                     </div>
-                </CardHeader>
 
-                {/* Content */}
-                <CardContent className="p-6 flex-1 flex flex-col justify-between gap-5 relative z-10">
                     {loading ? (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <Skeleton className="h-14 rounded-xl" />
-                                <Skeleton className="h-14 rounded-xl" />
+                        <div className="space-y-4 pt-1">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Skeleton className="h-56 rounded-2xl" />
+                                <Skeleton className="h-56 rounded-2xl" />
                             </div>
-                            <Skeleton className="h-2 w-full rounded-full" />
+                            <Skeleton className="h-20 rounded-xl" />
                             <Skeleton className="h-10 rounded-xl" />
                         </div>
                     ) : (
                         <>
-                            {/* KPI Metrics */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                                        <TrendingDown className="h-3 w-3 text-rose-500" /> Outstanding
+                            {/* Two Side-by-Side Cards: Trade & Non-Trade */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <CategoryCard
+                                    data={trade}
+                                    label="Trade"
+                                    icon={<Briefcase className="h-5 w-5" />}
+                                    gradient="bg-gradient-to-br from-sky-500 to-indigo-500"
+                                />
+                                <CategoryCard
+                                    data={nonTrade}
+                                    label="Non-Trade"
+                                    icon={<Wallet className="h-5 w-5" />}
+                                    gradient="bg-gradient-to-br from-amber-500 to-rose-500"
+                                />
+                            </div>
+
+                            {/* Stacked Composition Bar */}
+                            <div className="rounded-xl border border-border/70 bg-card p-4 sm:p-5 shadow-sm">
+                                <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-2">
+                                    <span>Composition by Outstanding Amount</span>
+                                    <span className="text-foreground font-mono font-bold">
+                                        {formatPeso(totalOutstanding)} TOTAL
                                     </span>
-                                    <p className="text-2xl font-black tracking-tight text-rose-600 dark:text-rose-400 font-mono">
-                                        {formatPhpShort(totalOutstanding)}
-                                    </p>
                                 </div>
-                                <div className="space-y-1">
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                                        <PhilippinePeso className="h-3 w-3 text-emerald-500" /> Total Paid
+                                <div className="h-3 w-full rounded-full overflow-hidden bg-muted flex shadow-inner">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-sky-500 to-indigo-500 transition-all duration-500"
+                                        style={{ width: `${tradePct}%` }}
+                                        title={`Trade: ${tradePct.toFixed(1)}%`}
+                                    />
+                                    <div
+                                        className="h-full bg-gradient-to-r from-amber-500 to-rose-500 transition-all duration-500"
+                                        style={{ width: `${nonTradePct}%` }}
+                                        title={`Non-Trade: ${nonTradePct.toFixed(1)}%`}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between mt-2.5 text-xs">
+                                    <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-sky-500" />
+                                        Trade <span className="font-bold font-mono text-foreground">{tradePct.toFixed(1)}%</span>
                                     </span>
-                                    <p className="text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
-                                        {formatPhpShort(totalPaid)}
-                                    </p>
+                                    <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-500" />
+                                        Non-Trade <span className="font-bold font-mono text-foreground">{nonTradePct.toFixed(1)}%</span>
+                                    </span>
                                 </div>
                             </div>
 
-                            {/* Settlement Progress */}
-                            <div className="space-y-1.5 p-3 rounded-xl bg-muted/20 border border-border/30">
-                                <div className="flex items-center justify-between text-xs">
-                                    <span className="text-muted-foreground font-medium">Settlement Rate</span>
-                                    <span className="font-mono font-bold text-foreground">
-                                        {settlementRate.toFixed(1)}%
-                                    </span>
-                                </div>
-                                <Progress value={safeSettlementRate} className="h-2" />
-                            </div>
-
-                            {/* Secondary stats row: Trade vs Non-Trade Breakdown */}
-                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/30 text-xs">
+                            {/* Bottom Tab Pill & Records Count Summary Bar */}
+                            <Link
+                                href={targetUrl}
+                                className="flex flex-wrap items-center justify-between gap-3 p-3 sm:px-4 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors group cursor-pointer"
+                            >
                                 <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-1">
-                                        <Briefcase className="h-3 w-3 text-sky-500" />
-                                        <span className="text-[11px] text-muted-foreground">Trade:</span>
-                                        <span className="font-mono font-semibold text-foreground text-[11px]">
-                                            {formatPhpShort(tradeCat?.totalOutstanding ?? 0)}
-                                        </span>
-                                    </div>
-                                    <span className="text-border">|</span>
-                                    <div className="flex items-center gap-1">
-                                        <Wallet className="h-3 w-3 text-amber-500" />
-                                        <span className="text-[11px] text-muted-foreground">Non-Trade:</span>
-                                        <span className="font-mono font-semibold text-foreground text-[11px]">
-                                            {formatPhpShort(nonTradeCat?.totalOutstanding ?? 0)}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                    <Clock className="h-3 w-3 text-muted-foreground" />
-                                    <span className="text-[11px] font-medium font-mono">
-                                        {metrics?.totalRecords ?? 0} bills
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border border-border/60 bg-background shadow-xs text-foreground">
+                                        <ListChecks className="h-3.5 w-3.5" />
+                                        All
+                                        <span className="text-[10px] font-black opacity-70 ml-1">{records.length}</span>
+                                    </span>
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border border-sky-500/20 bg-sky-500/5 text-sky-700 dark:text-sky-400">
+                                        <Briefcase className="h-3.5 w-3.5" />
+                                        Trade
+                                        <span className="text-[10px] font-black ml-1">{trade.totalRecords}</span>
+                                    </span>
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-400">
+                                        <Wallet className="h-3.5 w-3.5" />
+                                        Non-Trade
+                                        <span className="text-[10px] font-black ml-1">{nonTrade.totalRecords}</span>
                                     </span>
                                 </div>
-                            </div>
+
+                                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground group-hover:text-primary transition-colors">
+                                    <span className="tabular-nums">
+                                        <span className="font-bold text-foreground font-mono">{formatPeso(totalOutstanding)}</span> outstanding across{" "}
+                                        <span className="font-bold text-foreground font-mono">{records.length}</span> records
+                                    </span>
+                                    <ChevronRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
+                                </div>
+                            </Link>
                         </>
                     )}
-
-                    {/* Footer link cue */}
-                    <div className="pt-2 border-t border-border/40 flex items-center justify-between text-xs font-semibold text-muted-foreground group-hover:text-primary transition-colors">
-                        <span>View Detailed Accounts Payable</span>
-                        <ChevronRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
-                    </div>
                 </CardContent>
             </Card>
-        </Link>
+        </div>
     );
 }
 

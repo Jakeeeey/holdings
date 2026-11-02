@@ -52,3 +52,4 @@ export interface FetchPunctualityParams {
   endDate?: string;
   force?: boolean;
 }
+

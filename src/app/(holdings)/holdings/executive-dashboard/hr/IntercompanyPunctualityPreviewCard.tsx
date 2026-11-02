@@ -711,3 +711,4 @@ export function IntercompanyPunctualityPreviewCard({
     </Card>
   );
 }
+

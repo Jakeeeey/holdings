@@ -44,6 +44,7 @@ import { AccountsPayablePreviewCard } from "./sales/AccountsPayablePreviewCard";
 import { AccountsReceivablePreviewCard } from "./sales/AccountsReceivablePreviewCard";
 import { DistributionSalesDetailedPreviewCard } from "./sales/DistributionSalesDetailedPreviewCard";
 import { IntercompanyEmployeeMasterlistPreviewCard } from "./hr/IntercompanyEmployeeMasterlistPreviewCard";
+import { IntercompanyOvertimePreviewCard } from "./hr/IntercompanyOvertimePreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -494,6 +495,21 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                             <IntercompanyEmployeeMasterlistPreviewCard
                                                 key={group.id}
                                                 group={group}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "intercompany-overtime" ||
+                                        cat === "overtime" ||
+                                        cat === "overtime-report" ||
+                                        cat === "intercompany_overtime"
+                                    ) {
+                                        return (
+                                            <IntercompanyOvertimePreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
                                             />
                                         );
                                     }

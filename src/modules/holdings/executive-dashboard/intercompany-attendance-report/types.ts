@@ -44,3 +44,4 @@ export interface FetchAttendanceParams {
   endDate?: string;
   force?: boolean;
 }
+

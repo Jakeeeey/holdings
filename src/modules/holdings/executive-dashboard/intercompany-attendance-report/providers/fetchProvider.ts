@@ -131,3 +131,4 @@ export async function fetchIntercompanyAttendance({
     return FALLBACK_ATTENDANCE_DATA;
   }
 }
+

@@ -621,3 +621,4 @@ export function IntercompanyAttendanceReportModule({ groupId, startDate, endDate
     </div>
   );
 }
+

@@ -382,3 +382,4 @@ export async function GET(
     return NextResponse.json(FALLBACK_ATTENDANCE_DATA);
   }
 }
+

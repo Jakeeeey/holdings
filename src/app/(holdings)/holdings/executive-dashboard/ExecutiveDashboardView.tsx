@@ -43,6 +43,7 @@ import { CollectionVsSalesPreviewCard } from "./sales/CollectionVsSalesPreviewCa
 import { AccountsPayablePreviewCard } from "./sales/AccountsPayablePreviewCard";
 import { AccountsReceivablePreviewCard } from "./sales/AccountsReceivablePreviewCard";
 import { DistributionSalesDetailedPreviewCard } from "./sales/DistributionSalesDetailedPreviewCard";
+import { IntercompanyEmployeeMasterlistPreviewCard } from "./hr/IntercompanyEmployeeMasterlistPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -479,6 +480,20 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                                 group={group} 
                                                 startDate={startDate} 
                                                 endDate={endDate} 
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "intercompany-employee-masterlist" ||
+                                        cat === "employee-masterlist" ||
+                                        cat === "intercompany-headcount" ||
+                                        cat === "employee_masterlist" ||
+                                        cat === "intercompany-roster"
+                                    ) {
+                                        return (
+                                            <IntercompanyEmployeeMasterlistPreviewCard
+                                                key={group.id}
+                                                group={group}
                                             />
                                         );
                                     }

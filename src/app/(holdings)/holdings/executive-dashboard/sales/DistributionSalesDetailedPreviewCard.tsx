@@ -84,6 +84,57 @@ const formatShort = (val: number) => {
     return `${sign}₱${absVal.toFixed(0)}`;
 };
 
+function formatDivisionLabel(name: string): string[] {
+    const upper = name.trim().toUpperCase();
+    if (upper === "LOCAL MODERN TRADE DIVISION") {
+        return ["LOCAL MODERN", "TRADE DIVISION"];
+    }
+    if (upper.endsWith(" TRADE DIVISION")) {
+        return [upper.replace(" TRADE DIVISION", ""), "TRADE DIVISION"];
+    }
+    if (upper.endsWith(" DIVISION")) {
+        return [upper.replace(" DIVISION", ""), "DIVISION"];
+    }
+    if (upper.endsWith(" DIVISON")) {
+        return [upper.replace(" DIVISON", ""), "DIVISON"];
+    }
+    if (upper.length > 14 && upper.includes(" ")) {
+        const words = upper.split(" ");
+        if (words.length === 2) return words;
+        const mid = Math.ceil(words.length / 2);
+        return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
+    }
+    return [upper];
+}
+
+interface CustomTickProps {
+    x?: number;
+    y?: number;
+    payload?: { value?: string };
+}
+
+const CustomYAxisTick = ({ x = 0, y = 0, payload }: CustomTickProps) => {
+    if (!payload || !payload.value) return null;
+    const lines = formatDivisionLabel(String(payload.value));
+    return (
+        <g transform={`translate(${x},${y})`}>
+            <text
+                x={-12}
+                y={lines.length > 1 ? -5 : 4}
+                textAnchor="end"
+                className="fill-foreground font-black tracking-tight uppercase"
+                style={{ fontWeight: 900, fontSize: "10.5px" }}
+            >
+                {lines.map((line, idx) => (
+                    <tspan x={-12} dy={idx === 0 ? 0 : 12.5} key={idx}>
+                        {line}
+                    </tspan>
+                ))}
+            </text>
+        </g>
+    );
+};
+
 export function DistributionSalesDetailedPreviewCard({
     group,
     startDate: propStartDate,
@@ -456,12 +507,12 @@ export function DistributionSalesDetailedPreviewCard({
                                         </div>
                                     </div>
 
-                                    <div className="h-[460px] sm:h-[500px] w-full pt-2">
+                                    <div className="h-[520px] sm:h-[550px] w-full pt-2">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <ComposedChart
                                                 data={divisionList}
                                                 layout="vertical"
-                                                margin={{ left: 10, right: 65, top: 10, bottom: 10 }}
+                                                margin={{ left: 15, right: 90, top: 15, bottom: 15 }}
                                                 onClick={(e) => {
                                                     if (e && e.activePayload && e.activePayload.length > 0) {
                                                         const p = e.activePayload[0].payload as DivisionDetailedItem;
@@ -470,15 +521,14 @@ export function DistributionSalesDetailedPreviewCard({
                                                 }}
                                                 style={{ cursor: "pointer" }}
                                             >
-                                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                                                <CartesianGrid strokeDasharray="3 3" horizontal={false} vertical={true} stroke="hsl(var(--border))" strokeOpacity={0.35} />
                                                 <XAxis type="number" hide />
                                                 <YAxis
                                                     dataKey="name"
                                                     type="category"
-                                                    width={155}
-                                                    fontSize={10}
-                                                    tick={{ fill: "hsl(var(--foreground))", fontWeight: 900, fontSize: 10 }}
-                                                    axisLine={false}
+                                                    width={160}
+                                                    tick={<CustomYAxisTick />}
+                                                    axisLine={{ stroke: "hsl(var(--border))", strokeWidth: 1, strokeOpacity: 0.6 }}
                                                     tickLine={false}
                                                 />
                                                 <Tooltip
@@ -521,14 +571,14 @@ export function DistributionSalesDetailedPreviewCard({
                                                 />
                                                 <Bar dataKey="sales" name="Actual" barSize={26} radius={[0, 8, 8, 0]} minPointSize={2}>
                                                     {divisionList.map((e, i) => (
-                                                        <Cell key={i} fill={e.sales >= e.target && e.target > 0 ? "#10b981" : "#f59e0b"} fillOpacity={0.9} />
+                                                        <Cell key={i} fill={e.sales >= e.target ? "#10b981" : "#f59e0b"} fillOpacity={0.9} />
                                                     ))}
                                                     <LabelList
                                                         dataKey="sales"
                                                         position="right"
                                                         formatter={(v: unknown) => formatShort(Number(v) || 0)}
-                                                        style={{ fontSize: "10px", fontWeight: 900, fill: "hsl(var(--foreground))", textTransform: "uppercase" }}
-                                                        offset={10}
+                                                        style={{ fontSize: "11px", fontWeight: 900, fill: "hsl(var(--foreground))", textTransform: "uppercase" }}
+                                                        offset={12}
                                                     />
                                                 </Bar>
                                                 <Bar
@@ -536,10 +586,10 @@ export function DistributionSalesDetailedPreviewCard({
                                                     name="Target"
                                                     barSize={12}
                                                     fill="#fef3c7"
-                                                    fillOpacity={0.8}
-                                                    stroke="#d97706"
-                                                    strokeWidth={1}
-                                                    strokeOpacity={0.6}
+                                                    fillOpacity={0.85}
+                                                    stroke="#fcd34d"
+                                                    strokeWidth={1.2}
+                                                    strokeOpacity={0.9}
                                                     radius={[0, 4, 4, 0]}
                                                 />
                                                 <Scatter
@@ -548,17 +598,17 @@ export function DistributionSalesDetailedPreviewCard({
                                                     shape={(props: unknown) => {
                                                         const p = props as { cx?: number; cy?: number; payload?: { target?: number } };
                                                         const { cx, cy, payload } = p;
-                                                        if (!payload || !payload.target || cx === undefined || cy === undefined) return <g />;
+                                                        if (!payload || !payload.target || Number(payload.target) <= 0 || cx === undefined || cy === undefined) return <g />;
                                                         return (
                                                             <line
                                                                 x1={cx}
-                                                                y1={cy - 18}
+                                                                y1={cy - 4}
                                                                 x2={cx}
                                                                 y2={cy + 18}
                                                                 stroke="#6b7280"
-                                                                strokeWidth={2.5}
+                                                                strokeWidth={3}
                                                                 strokeLinecap="round"
-                                                                opacity={0.6}
+                                                                opacity={0.65}
                                                             />
                                                         );
                                                     }}

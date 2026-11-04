@@ -52,6 +52,7 @@ import { IntercompanyVacanciesPreviewCard } from "./hr/IntercompanyVacanciesPrev
 import { IntercompanyConcernsPreviewCard } from "./hr/IntercompanyConcernsPreviewCard";
 import { ProductionPlanVsActualPreviewCard } from "./manufacturing/ProductionPlanVsActualPreviewCard";
 import { ProductionEfficiencyPreviewCard } from "./manufacturing/ProductionEfficiencyPreviewCard";
+import { RawMaterialAvailabilityPreviewCard } from "./manufacturing/RawMaterialAvailabilityPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -576,6 +577,25 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <IntercompanyConcernsPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "praw-material-availability" ||
+                                        cat === "raw-material-availability" ||
+                                        cat === "raw-materials-availability" ||
+                                        cat === "raw-material" ||
+                                        cat === "raw-materials" ||
+                                        cat === "material-availability" ||
+                                        cat === "raw_material_availability" ||
+                                        cat === "praw_material_availability"
+                                    ) {
+                                        return (
+                                            <RawMaterialAvailabilityPreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}

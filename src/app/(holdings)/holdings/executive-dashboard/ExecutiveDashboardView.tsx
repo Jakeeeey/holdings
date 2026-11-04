@@ -48,6 +48,7 @@ import { IntercompanyOvertimePreviewCard } from "./hr/IntercompanyOvertimePrevie
 import { IntercompanyPunctualityPreviewCard } from "./hr/IntercompanyPunctualityPreviewCard";
 import { IntercompanyAttendanceReportPreviewCard } from "./hr/IntercompanyAttendanceReportPreviewCard";
 import { IntercompanyResignationsPreviewCard } from "./hr/IntercompanyResignationsPreviewCard";
+import { IntercompanyVacanciesPreviewCard } from "./hr/IntercompanyVacanciesPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -556,6 +557,22 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <IntercompanyResignationsPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "intercompany-vacancies" ||
+                                        cat === "vacancies" ||
+                                        cat === "vacancies-report" ||
+                                        cat === "job-vacancies" ||
+                                        cat === "intercompany_vacancies"
+                                    ) {
+                                        return (
+                                            <IntercompanyVacanciesPreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}

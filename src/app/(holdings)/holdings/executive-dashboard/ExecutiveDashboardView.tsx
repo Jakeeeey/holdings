@@ -47,6 +47,11 @@ import { IntercompanyEmployeeMasterlistPreviewCard } from "./hr/IntercompanyEmpl
 import { IntercompanyOvertimePreviewCard } from "./hr/IntercompanyOvertimePreviewCard";
 import { IntercompanyPunctualityPreviewCard } from "./hr/IntercompanyPunctualityPreviewCard";
 import { IntercompanyAttendanceReportPreviewCard } from "./hr/IntercompanyAttendanceReportPreviewCard";
+import { IntercompanyResignationsPreviewCard } from "./hr/IntercompanyResignationsPreviewCard";
+import { IntercompanyVacanciesPreviewCard } from "./hr/IntercompanyVacanciesPreviewCard";
+import { IntercompanyConcernsPreviewCard } from "./hr/IntercompanyConcernsPreviewCard";
+import { ProductionPlanVsActualPreviewCard } from "./manufacturing/ProductionPlanVsActualPreviewCard";
+import { ProductionEfficiencyPreviewCard } from "./manufacturing/ProductionEfficiencyPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -539,6 +544,90 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <IntercompanyAttendanceReportPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "intercompany-resignations" ||
+                                        cat === "resignations" ||
+                                        cat === "resignation-report" ||
+                                        cat === "resignation" ||
+                                        cat === "intercompany_resignations"
+                                    ) {
+                                        return (
+                                            <IntercompanyResignationsPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "intercompany-concerns" ||
+                                        cat === "concerns" ||
+                                        cat === "employee-concerns" ||
+                                        cat === "concerns-report" ||
+                                        cat === "intercompany_concerns"
+                                    ) {
+                                        return (
+                                            <IntercompanyConcernsPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "production-efficiency" ||
+                                        cat === "production_efficiency" ||
+                                        cat === "efficiency" ||
+                                        cat === "labor-efficiency" ||
+                                        cat === "manufacturing-efficiency" ||
+                                        cat === "productivity" ||
+                                        cat === "oee"
+                                    ) {
+                                        return (
+                                            <ProductionEfficiencyPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "production-plan-vs-actual" ||
+                                        cat === "plan-vs-actual" ||
+                                        cat === "production-variance" ||
+                                        cat === "production_plan_vs_actual" ||
+                                        cat === "production-output-variance" ||
+                                        cat === "product-plan-vs-actual" ||
+                                        cat === "manufacturing-plan-vs-actual"
+                                    ) {
+                                        return (
+                                            <ProductionPlanVsActualPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "intercompany-vacancies" ||
+                                        cat === "vacancies" ||
+                                        cat === "vacancies-report" ||
+                                        cat === "job-vacancies" ||
+                                        cat === "intercompany_vacancies"
+                                    ) {
+                                        return (
+                                            <IntercompanyVacanciesPreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}

@@ -135,3 +135,4 @@ export async function fetchIntercompanyResignations({
     return FALLBACK_RESIGNATION_DATA;
   }
 }
+

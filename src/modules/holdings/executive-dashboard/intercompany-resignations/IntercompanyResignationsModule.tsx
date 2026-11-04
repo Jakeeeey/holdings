@@ -571,3 +571,4 @@ export function IntercompanyResignationsModule({ groupId, startDate, endDate }: 
     </div>
   );
 }
+

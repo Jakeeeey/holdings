@@ -51,3 +51,4 @@ export interface FetchResignationsParams {
   endDate?: string;
   force?: boolean;
 }
+

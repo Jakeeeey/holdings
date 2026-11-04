@@ -53,6 +53,7 @@ import { IntercompanyConcernsPreviewCard } from "./hr/IntercompanyConcernsPrevie
 import { ProductionPlanVsActualPreviewCard } from "./manufacturing/ProductionPlanVsActualPreviewCard";
 import { ProductionEfficiencyPreviewCard } from "./manufacturing/ProductionEfficiencyPreviewCard";
 import { RawMaterialAvailabilityPreviewCard } from "./manufacturing/RawMaterialAvailabilityPreviewCard";
+import { ProductionWastagePreviewCard } from "./manufacturing/ProductionWastagePreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -577,6 +578,27 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <IntercompanyConcernsPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "production-wastage" ||
+                                        cat === "production_wastage" ||
+                                        cat === "wastage" ||
+                                        cat === "scrap" ||
+                                        cat === "production-scrap" ||
+                                        cat === "production_scrap" ||
+                                        cat === "scrap-report" ||
+                                        cat === "wastage-report" ||
+                                        cat === "product-wastage" ||
+                                        cat === "product_wastage"
+                                    ) {
+                                        return (
+                                            <ProductionWastagePreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}

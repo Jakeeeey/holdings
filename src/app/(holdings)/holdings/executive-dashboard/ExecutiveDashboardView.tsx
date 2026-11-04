@@ -51,6 +51,7 @@ import { IntercompanyResignationsPreviewCard } from "./hr/IntercompanyResignatio
 import { IntercompanyVacanciesPreviewCard } from "./hr/IntercompanyVacanciesPreviewCard";
 import { IntercompanyConcernsPreviewCard } from "./hr/IntercompanyConcernsPreviewCard";
 import { ProductionPlanVsActualPreviewCard } from "./manufacturing/ProductionPlanVsActualPreviewCard";
+import { ProductionEfficiencyPreviewCard } from "./manufacturing/ProductionEfficiencyPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -575,6 +576,24 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <IntercompanyConcernsPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "production-efficiency" ||
+                                        cat === "production_efficiency" ||
+                                        cat === "efficiency" ||
+                                        cat === "labor-efficiency" ||
+                                        cat === "manufacturing-efficiency" ||
+                                        cat === "productivity" ||
+                                        cat === "oee"
+                                    ) {
+                                        return (
+                                            <ProductionEfficiencyPreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}

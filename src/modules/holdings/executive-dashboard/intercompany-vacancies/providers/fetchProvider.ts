@@ -119,3 +119,4 @@ export async function fetchIntercompanyVacancies({
     return FALLBACK_VACANCIES_DATA;
   }
 }
+

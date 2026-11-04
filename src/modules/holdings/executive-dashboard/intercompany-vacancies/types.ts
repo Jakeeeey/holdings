@@ -40,3 +40,4 @@ export interface FetchVacanciesParams {
   endDate?: string;
   force?: boolean;
 }
+

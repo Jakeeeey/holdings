@@ -566,3 +566,4 @@ export function IntercompanyVacanciesModule({ groupId, startDate, endDate }: Mod
     </div>
   );
 }
+

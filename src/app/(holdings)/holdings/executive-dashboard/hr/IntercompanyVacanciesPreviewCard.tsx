@@ -667,3 +667,4 @@ export function IntercompanyVacanciesPreviewCard({
     </Card>
   );
 }
+

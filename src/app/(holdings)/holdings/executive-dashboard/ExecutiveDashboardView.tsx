@@ -56,6 +56,7 @@ import { RawMaterialAvailabilityPreviewCard } from "./manufacturing/RawMaterialA
 import { ProductionWastagePreviewCard } from "./manufacturing/ProductionWastagePreviewCard";
 import { FinishedGoodsInventoryPreviewCard } from "./manufacturing/FinishedGoodsInventoryPreviewCard";
 import { ManufacturingCostPreviewCard } from "./manufacturing/ManufacturingCostPreviewCard";
+import { MachineDowntimePreviewCard } from "./manufacturing/MachineDowntimePreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -580,6 +581,27 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <IntercompanyConcernsPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "machine-downtime" ||
+                                        cat === "machine_downtime" ||
+                                        cat === "downtime" ||
+                                        cat === "production-downtime" ||
+                                        cat === "production_downtime" ||
+                                        cat === "equipment-downtime" ||
+                                        cat === "equipment_downtime" ||
+                                        cat === "downtime-analysis" ||
+                                        cat === "oee-downtime" ||
+                                        cat === "maintenance-downtime"
+                                    ) {
+                                        return (
+                                            <MachineDowntimePreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}

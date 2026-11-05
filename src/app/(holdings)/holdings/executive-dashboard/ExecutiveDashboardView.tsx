@@ -55,6 +55,7 @@ import { ProductionEfficiencyPreviewCard } from "./manufacturing/ProductionEffic
 import { RawMaterialAvailabilityPreviewCard } from "./manufacturing/RawMaterialAvailabilityPreviewCard";
 import { ProductionWastagePreviewCard } from "./manufacturing/ProductionWastagePreviewCard";
 import { FinishedGoodsInventoryPreviewCard } from "./manufacturing/FinishedGoodsInventoryPreviewCard";
+import { ManufacturingCostPreviewCard } from "./manufacturing/ManufacturingCostPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -579,6 +580,28 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <IntercompanyConcernsPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "manufacturing-cost-per-unit" ||
+                                        cat === "manufacturing_cost_per_unit" ||
+                                        cat === "manufacturing-cost-unit" ||
+                                        cat === "manufacturing_cost_unit" ||
+                                        cat === "manufacturing-cost" ||
+                                        cat === "manufacturing_cost" ||
+                                        cat === "cost-per-unit" ||
+                                        cat === "cost_per_unit" ||
+                                        cat === "unit-cost" ||
+                                        cat === "unit_cost" ||
+                                        cat === "production-cost-per-unit"
+                                    ) {
+                                        return (
+                                            <ManufacturingCostPreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}

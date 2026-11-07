@@ -57,6 +57,7 @@ import { ProductionWastagePreviewCard } from "./manufacturing/ProductionWastageP
 import { FinishedGoodsInventoryPreviewCard } from "./manufacturing/FinishedGoodsInventoryPreviewCard";
 import { ManufacturingCostPreviewCard } from "./manufacturing/ManufacturingCostPreviewCard";
 import { MachineDowntimePreviewCard } from "./manufacturing/MachineDowntimePreviewCard";
+import { QualityRejectRatePreviewCard } from "./manufacturing/QualityRejectRatePreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -602,6 +603,26 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <MachineDowntimePreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "quality-reject-rate" ||
+                                        cat === "quality_reject_rate" ||
+                                        cat === "quality" ||
+                                        cat === "reject-rate" ||
+                                        cat === "reject_rate" ||
+                                        cat === "quality-rate" ||
+                                        cat === "manufacturing-quality" ||
+                                        cat === "qa-reject-rate" ||
+                                        cat === "qa-rate"
+                                    ) {
+                                        return (
+                                            <QualityRejectRatePreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}

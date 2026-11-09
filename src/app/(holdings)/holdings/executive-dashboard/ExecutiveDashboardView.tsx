@@ -58,6 +58,7 @@ import { FinishedGoodsInventoryPreviewCard } from "./manufacturing/FinishedGoods
 import { ManufacturingCostPreviewCard } from "./manufacturing/ManufacturingCostPreviewCard";
 import { MachineDowntimePreviewCard } from "./manufacturing/MachineDowntimePreviewCard";
 import { QualityRejectRatePreviewCard } from "./manufacturing/QualityRejectRatePreviewCard";
+import { PurchasesPreviewCard } from "./manufacturing/PurchasesPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -623,6 +624,28 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <QualityRejectRatePreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "purchases" ||
+                                        cat === "purchase" ||
+                                        cat === "purchasing" ||
+                                        cat === "procurement" ||
+                                        cat === "purchase-orders" ||
+                                        cat === "purchase_orders" ||
+                                        cat === "po-summary" ||
+                                        cat === "po_summary" ||
+                                        cat === "purchases-summary" ||
+                                        cat === "purchases_summary" ||
+                                        cat === "raw-material-purchases"
+                                    ) {
+                                        return (
+                                            <PurchasesPreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}

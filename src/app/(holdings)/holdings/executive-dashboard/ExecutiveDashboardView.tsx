@@ -61,6 +61,7 @@ import { QualityRejectRatePreviewCard } from "./manufacturing/QualityRejectRateP
 import { PurchasesPreviewCard } from "./manufacturing/PurchasesPreviewCard";
 import { InventoryPreviewCard } from "./manufacturing/InventoryPreviewCard";
 import { InventoryAgingPreviewCard } from "./manufacturing/InventoryAgingPreviewCard";
+import { GrossMarginPreviewCard } from "./manufacturing/GrossMarginPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -684,6 +685,24 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <InventoryAgingPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "gross-margin" ||
+                                        cat === "gross_margin" ||
+                                        cat === "gross-profit" ||
+                                        cat === "profit-margin" ||
+                                        cat === "sales-margin" ||
+                                        cat === "margin" ||
+                                        cat === "commercial-margin"
+                                    ) {
+                                        return (
+                                            <GrossMarginPreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}

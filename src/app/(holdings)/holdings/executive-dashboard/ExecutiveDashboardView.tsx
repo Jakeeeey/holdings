@@ -60,6 +60,7 @@ import { MachineDowntimePreviewCard } from "./manufacturing/MachineDowntimePrevi
 import { QualityRejectRatePreviewCard } from "./manufacturing/QualityRejectRatePreviewCard";
 import { PurchasesPreviewCard } from "./manufacturing/PurchasesPreviewCard";
 import { InventoryPreviewCard } from "./manufacturing/InventoryPreviewCard";
+import { InventoryAgingPreviewCard } from "./manufacturing/InventoryAgingPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -665,6 +666,24 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <InventoryPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "inventory-aging" ||
+                                        cat === "inventory_aging" ||
+                                        cat === "stock-aging" ||
+                                        cat === "aging-inventory" ||
+                                        cat === "aging_inventory" ||
+                                        cat === "distribution-aging" ||
+                                        cat === "aging-and-slob-inventory"
+                                    ) {
+                                        return (
+                                            <InventoryAgingPreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}

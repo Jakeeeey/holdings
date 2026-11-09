@@ -4,7 +4,6 @@ import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
   ShoppingBag,
-  TrendingUp,
   Truck,
   CheckCircle2,
   Clock,
@@ -16,6 +15,7 @@ import {
   RefreshCw,
   Building2,
   ShieldCheck,
+  BadgeCheck,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -128,7 +128,7 @@ export function PurchasesPreviewCard({
       label: s.supplierName.length > 14 ? `${s.supplierName.slice(0, 14)}...` : s.supplierName,
       spend: Math.round(s.totalSpend / 1000),
       orderCount: s.orderCount,
-      receivedSpend: Math.round((s.totalSpend * (s.fulfillmentRate / 100)) / 1000),
+      receivedSpend: Math.round(s.receivedSpend / 1000),
     }));
   }, [monthlyTrends, topSuppliers]);
 
@@ -154,7 +154,7 @@ export function PurchasesPreviewCard({
                 {group.group_name || "Purchases"}
               </h3>
               <p className="text-xs font-medium text-muted-foreground">
-                · Purchase order tracking, supplier spend concentration, fulfillment rates, and delivery pipelines
+                · Total received inbound goods, ordered pipeline value, supplier delivery rates, and vendor concentration
               </p>
             </div>
           </div>
@@ -256,9 +256,36 @@ export function PurchasesPreviewCard({
           </div>
         )}
 
-        {/* 5-KPI Strip */}
+        {/* 5-KPI Strip: TOTAL AMOUNT RECEIVED PROMINENTLY POSITIONED */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {/* KPI 1: Total Spend */}
+          {/* KPI 1: TOTAL AMOUNT RECEIVED (HERO FIGURE) */}
+          <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-500/10 space-y-1 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                Total Amount Received
+              </span>
+              <BadgeCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+            </div>
+            {loading ? (
+              <Skeleton className="h-6 w-28" />
+            ) : (
+              <div className="space-y-0.5">
+                <div className="text-xl sm:text-2xl font-black tracking-tight text-emerald-700 dark:text-emerald-400">
+                  ₱{(kpis?.totalAmountReceived || 0) >= 1000000
+                    ? `${((kpis?.totalAmountReceived || 0) / 1000000).toFixed(2)}M`
+                    : `${((kpis?.totalAmountReceived || 0) / 1000).toFixed(0)}K`}
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px]">
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    {kpis?.fulfillmentRate || 0}% Fulfilled
+                  </span>
+                  <span className="text-muted-foreground">into stock</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* KPI 2: Total PO Value (Ordered) */}
           <div className="p-3.5 rounded-xl border border-border/40 bg-muted/20 space-y-1">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="text-[10px] font-bold uppercase tracking-wider">Total PO Spend</span>
@@ -274,37 +301,38 @@ export function PurchasesPreviewCard({
                     : `${((kpis?.totalSpend || 0) / 1000).toFixed(0)}K`}
                 </div>
                 <p className="text-[10px] text-muted-foreground font-medium">
-                  Across {kpis?.totalOrders || 0} purchase orders
+                  {kpis?.totalOrders || 0} total orders issued
                 </p>
               </div>
             )}
           </div>
 
-          {/* KPI 2: Fulfillment Rate % */}
+          {/* KPI 3: Pending / In-Transit Balance */}
           <div className="p-3.5 rounded-xl border border-border/40 bg-muted/20 space-y-1">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-[10px] font-bold uppercase tracking-wider">Fulfillment Rate</span>
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Pending Delivery Value</span>
+              <Clock className="h-4 w-4 text-blue-500" />
             </div>
             {loading ? (
-              <Skeleton className="h-6 w-16" />
+              <Skeleton className="h-6 w-24" />
             ) : (
               <div className="space-y-0.5">
                 <div className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
-                  {kpis?.fulfillmentRate || 0}%
+                  ₱{(kpis?.pendingAmount || 0) >= 1000000
+                    ? `${((kpis?.pendingAmount || 0) / 1000000).toFixed(2)}M`
+                    : `${((kpis?.pendingAmount || 0) / 1000).toFixed(0)}K`}
                 </div>
-                <div className="flex items-center gap-1.5 text-[10px]">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <span className="text-muted-foreground font-medium">Target: &ge; 85.0%</span>
-                </div>
+                <p className="text-[10px] text-muted-foreground font-medium">
+                  {kpis?.pendingOrders || 0} POs in-transit / awaiting QA
+                </p>
               </div>
             )}
           </div>
 
-          {/* KPI 3: Received / In-Progress POs */}
+          {/* KPI 4: Received / In-Progress PO Counts */}
           <div className="p-3.5 rounded-xl border border-border/40 bg-muted/20 space-y-1">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-[10px] font-bold uppercase tracking-wider">Received & Partial</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider">Fulfillment Status</span>
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
             </div>
             {loading ? (
@@ -312,29 +340,11 @@ export function PurchasesPreviewCard({
             ) : (
               <div className="space-y-0.5">
                 <div className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
-                  {(kpis?.receivedOrders || 0) + (kpis?.partiallyReceivedOrders || 0)}
+                  {(kpis?.receivedOrders || 0) + (kpis?.partiallyReceivedOrders || 0)} POs
                 </div>
                 <p className="text-[10px] text-muted-foreground font-medium">
                   {kpis?.receivedOrders || 0} Full · {kpis?.partiallyReceivedOrders || 0} Partial
                 </p>
-              </div>
-            )}
-          </div>
-
-          {/* KPI 4: Pending / In-Transit */}
-          <div className="p-3.5 rounded-xl border border-border/40 bg-muted/20 space-y-1">
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-[10px] font-bold uppercase tracking-wider">Pending Delivery</span>
-              <Clock className="h-4 w-4 text-blue-500" />
-            </div>
-            {loading ? (
-              <Skeleton className="h-6 w-16" />
-            ) : (
-              <div className="space-y-0.5">
-                <div className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
-                  {kpis?.pendingOrders || 0}
-                </div>
-                <p className="text-[10px] text-muted-foreground font-medium">Awaiting fulfillment / QA</p>
               </div>
             )}
           </div>
@@ -373,10 +383,10 @@ export function PurchasesPreviewCard({
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Monthly Spend Trend & Order Volume
+                      Monthly Spend Trend & Inbound Receipts
                     </h4>
                     <p className="text-[11px] text-muted-foreground/70">
-                      Total procurement spend (₱ Thousands) alongside received inventory volume
+                      Total procurement spend vs received goods value (₱ Thousands) with PO volume
                     </p>
                   </div>
                   <Badge variant="outline" className="text-[10px] font-semibold">
@@ -486,7 +496,7 @@ export function PurchasesPreviewCard({
                       <Badge
                         variant="outline"
                         className={`text-[9px] font-bold ${
-                          supp.fulfillmentRate >= 85
+                          supp.fulfillmentRate >= 80
                             ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                             : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                         }`}
@@ -495,20 +505,24 @@ export function PurchasesPreviewCard({
                       </Badge>
                     </div>
 
-                    <div className="space-y-1">
+                    <div className="space-y-1 text-[11px]">
                       <div className="flex items-baseline justify-between">
-                        <span className="text-[10px] font-medium text-muted-foreground">Total Spend</span>
-                        <span className="text-sm font-black text-foreground">
+                        <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 font-bold">
+                          Received Amount
+                        </span>
+                        <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                          ₱{supp.receivedSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between text-muted-foreground text-[10px]">
+                        <span>Total PO Ordered</span>
+                        <span className="font-semibold text-foreground">
                           ₱{supp.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div className="flex items-baseline justify-between text-[10px] text-muted-foreground">
                         <span>Orders Count</span>
                         <span className="font-semibold text-foreground">{supp.orderCount} POs</span>
-                      </div>
-                      <div className="flex items-baseline justify-between text-[10px] text-muted-foreground">
-                        <span>Avg Order Value</span>
-                        <span className="font-semibold text-foreground">₱{supp.averageOrderValue.toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
@@ -526,7 +540,10 @@ export function PurchasesPreviewCard({
                         <th className="py-2 px-3 font-bold text-muted-foreground">PO Number</th>
                         <th className="py-2 px-3 font-bold text-muted-foreground">Date</th>
                         <th className="py-2 px-3 font-bold text-muted-foreground">Supplier</th>
-                        <th className="py-2 px-3 font-bold text-muted-foreground text-right">Amount (₱)</th>
+                        <th className="py-2 px-3 font-bold text-muted-foreground text-right">Ordered (₱)</th>
+                        <th className="py-2 px-3 font-bold text-emerald-600 dark:text-emerald-400 text-right">
+                          Received (₱)
+                        </th>
                         <th className="py-2 px-3 font-bold text-muted-foreground text-center">Status</th>
                       </tr>
                     </thead>
@@ -542,11 +559,14 @@ export function PurchasesPreviewCard({
                             <td className="py-2.5 px-3 text-muted-foreground text-[11px]">
                               {order.date}
                             </td>
-                            <td className="py-2.5 px-3 font-medium text-foreground max-w-[180px] truncate" title={order.supplierName}>
+                            <td className="py-2.5 px-3 font-medium text-foreground max-w-[170px] truncate" title={order.supplierName}>
                               {order.supplierName}
                             </td>
-                            <td className="py-2.5 px-3 font-bold text-foreground text-right">
+                            <td className="py-2.5 px-3 font-medium text-muted-foreground text-right">
                               ₱{order.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="py-2.5 px-3 font-bold text-emerald-600 dark:text-emerald-400 text-right">
+                              ₱{order.receivedAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                             <td className="py-2.5 px-3 text-center">
                               <Badge variant="outline" className={`text-[10px] font-bold ${badgeStyle}`}>
@@ -558,7 +578,7 @@ export function PurchasesPreviewCard({
                       })}
                       {filteredOrders.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="py-6 text-center text-muted-foreground text-xs">
+                          <td colSpan={6} className="py-6 text-center text-muted-foreground text-xs">
                             No purchase orders found matching selected filters.
                           </td>
                         </tr>

@@ -31,6 +31,7 @@ export interface PurchaseOrderRecord {
   supplierType?: string;
   grossAmount: number;
   totalAmount: number;
+  receivedAmount: number; // Total amount actually received
   discountAmount: number;
   vatAmount: number;
   inventoryStatusId: number;
@@ -51,6 +52,7 @@ export interface SupplierSpendSummary {
   supplierType?: string;
   orderCount: number;
   totalSpend: number;
+  receivedSpend: number; // Total amount received for this supplier
   receivedCount: number;
   pendingCount: number;
   fulfillmentRate: number; // 0 - 100%
@@ -65,7 +67,9 @@ export interface MonthlySpendTrend {
 }
 
 export interface PurchaseOrderKpis {
-  totalSpend: number;
+  totalSpend: number; // Total ordered PO amount
+  totalAmountReceived: number; // Total amount delivered & received into warehouse
+  pendingAmount: number; // In-transit / pending delivery balance
   totalOrders: number;
   fulfillmentRate: number; // 0 - 100%
   receivedOrders: number;
@@ -95,4 +99,3 @@ export interface PurchaseOrderResponse {
   source: "directus_live" | "fallback_mock";
   timestamp: string;
 }
-

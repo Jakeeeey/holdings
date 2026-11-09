@@ -18,7 +18,7 @@ import {
   Building2,
   PieChart as PieIcon,
   BarChart3,
-  Calendar,
+  BadgeCheck,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -81,7 +81,7 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>("ALL");
-  const [sortField, setSortField] = useState<"date" | "totalAmount" | "poNo" | "supplier">("date");
+  const [sortField, setSortField] = useState<"date" | "totalAmount" | "receivedAmount" | "poNo" | "supplier">("date");
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
   const loadData = async (force = false) => {
@@ -143,6 +143,8 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
         cmp = a.date.localeCompare(b.date);
       } else if (sortField === "totalAmount") {
         cmp = a.totalAmount - b.totalAmount;
+      } else if (sortField === "receivedAmount") {
+        cmp = a.receivedAmount - b.receivedAmount;
       } else if (sortField === "poNo") {
         cmp = a.poNo.localeCompare(b.poNo);
       } else if (sortField === "supplier") {
@@ -154,7 +156,7 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
     return list;
   }, [orders, searchTerm, statusFilter, selectedSupplierId, sortField, sortAsc]);
 
-  const toggleSort = (field: "date" | "totalAmount" | "poNo" | "supplier") => {
+  const toggleSort = (field: "date" | "totalAmount" | "receivedAmount" | "poNo" | "supplier") => {
     if (sortField === field) {
       setSortAsc(!sortAsc);
     } else {
@@ -165,17 +167,33 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
 
   const exportCSV = () => {
     if (filteredOrders.length === 0) return;
-    const headers = ["PO Number", "Date", "Supplier", "Gross Amount", "Total Amount", "Status", "Payment Status"];
-    const rows = filteredOrders.map((o) => [
-      `"${o.poNo}"`,
-      `"${o.date}"`,
-      `"${o.supplierName.replace(/"/g, '""')}"`,
-      o.grossAmount,
-      o.totalAmount,
-      `"${o.inventoryStatusText}"`,
-      `"${o.paymentStatusText}"`,
-    ]);
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const headers = [
+      "PO Number",
+      "Date",
+      "Supplier",
+      "Gross Amount",
+      "Total Ordered Amount",
+      "Total Amount Received",
+      "Fulfillment %",
+      "Inventory Status",
+      "Payment Status",
+    ];
+    const rows = filteredOrders.map((o) => {
+      const pct = o.totalAmount > 0 ? ((o.receivedAmount / o.totalAmount) * 100).toFixed(1) : "0.0";
+      return [
+        `"${o.poNo}"`,
+        `"${o.date}"`,
+        `"${o.supplierName.replace(/"/g, '""')}"`,
+        o.grossAmount,
+        o.totalAmount,
+        o.receivedAmount,
+        `"${pct}%"`,
+        `"${o.inventoryStatusText}"`,
+        `"${o.paymentStatusText}"`,
+      ];
+    });
+    const csvContent =
+      "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -188,7 +206,7 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
   const pieChartData = useMemo(() => {
     return topSuppliers.slice(0, 6).map((s) => ({
       name: s.supplierName,
-      value: s.totalSpend,
+      value: s.receivedSpend > 0 ? s.receivedSpend : s.totalSpend,
     }));
   }, [topSuppliers]);
 
@@ -238,16 +256,16 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
       </div>
 
       {/* Hero Header */}
-      <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-card via-card/90 to-amber-500/5 p-6 shadow-sm space-y-2">
+      <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-card via-card/90 to-emerald-500/5 p-6 shadow-sm space-y-2">
         <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-muted-foreground/70">
-          <Truck className="h-4 w-4 text-amber-500" />
+          <Truck className="h-4 w-4 text-emerald-500" />
           <span>Procurement & Inbound Supply Management</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
           Purchases & Vendor Spend Intelligence
         </h1>
         <p className="text-sm text-muted-foreground max-w-3xl">
-          Comprehensive executive oversight of corporate purchasing, fulfillment status pipelines, supplier concentration risk, and historical delivery performance across all business units.
+          Comprehensive executive oversight of total received inbound merchandise, ordered pipeline spend, supplier fulfillment rates, and delivery reconciliations across all business units.
         </p>
       </div>
 
@@ -261,9 +279,33 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
         </div>
       )}
 
-      {/* 5-KPI Executive Metrics */}
+      {/* 6-KPI Executive Metrics Strip: TOTAL AMOUNT RECEIVED PROMINENT */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {/* KPI 1: Total Spend */}
+        {/* KPI 1: TOTAL AMOUNT RECEIVED (HERO FIGURE) */}
+        <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-500/10 space-y-1 relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+              Total Amount Received
+            </span>
+            <BadgeCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+          </div>
+          {loading ? (
+            <Skeleton className="h-7 w-28" />
+          ) : (
+            <div className="space-y-0.5">
+              <div className="text-xl sm:text-2xl font-black text-emerald-700 dark:text-emerald-400">
+                ₱{(kpis?.totalAmountReceived || 0) >= 1000000
+                  ? `${((kpis?.totalAmountReceived || 0) / 1000000).toFixed(2)}M`
+                  : `${((kpis?.totalAmountReceived || 0) / 1000).toFixed(0)}K`}
+              </div>
+              <p className="text-[10px] text-emerald-600 dark:text-emerald-300 font-bold">
+                {kpis?.fulfillmentRate || 0}% delivered into stock
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* KPI 2: Total Ordered Spend */}
         <div className="p-4 rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm space-y-1">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-wider">Total PO Spend</span>
@@ -279,13 +321,35 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
                   : `${((kpis?.totalSpend || 0) / 1000).toFixed(0)}K`}
               </div>
               <p className="text-[10px] text-muted-foreground font-medium">
-                Across {kpis?.totalOrders || 0} orders
+                Across {kpis?.totalOrders || 0} purchase orders
               </p>
             </div>
           )}
         </div>
 
-        {/* KPI 2: Fulfillment Rate */}
+        {/* KPI 3: Pending Inbound Balance */}
+        <div className="p-4 rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm space-y-1">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="text-[10px] font-bold uppercase tracking-wider">Pending Delivery</span>
+            <Clock className="h-4 w-4 text-blue-500" />
+          </div>
+          {loading ? (
+            <Skeleton className="h-7 w-24" />
+          ) : (
+            <div className="space-y-0.5">
+              <div className="text-xl sm:text-2xl font-black text-foreground">
+                ₱{(kpis?.pendingAmount || 0) >= 1000000
+                  ? `${((kpis?.pendingAmount || 0) / 1000000).toFixed(2)}M`
+                  : `${((kpis?.pendingAmount || 0) / 1000).toFixed(0)}K`}
+              </div>
+              <p className="text-[10px] text-muted-foreground font-medium">
+                {kpis?.pendingOrders || 0} POs in-transit
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* KPI 4: Fulfillment Rate */}
         <div className="p-4 rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm space-y-1">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-wider">Fulfillment Rate</span>
@@ -306,7 +370,7 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
           )}
         </div>
 
-        {/* KPI 3: Fully Received */}
+        {/* KPI 5: Fully Received POs */}
         <div className="p-4 rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm space-y-1">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-wider">Received POs</span>
@@ -320,31 +384,13 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
                 {kpis?.receivedOrders || 0}
               </div>
               <p className="text-[10px] text-muted-foreground font-medium">
-                {kpis?.partiallyReceivedOrders || 0} partial shipments
+                + {kpis?.partiallyReceivedOrders || 0} partial batches
               </p>
             </div>
           )}
         </div>
 
-        {/* KPI 4: Pending Deliveries */}
-        <div className="p-4 rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm space-y-1">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Pending Orders</span>
-            <Clock className="h-4 w-4 text-blue-500" />
-          </div>
-          {loading ? (
-            <Skeleton className="h-7 w-16" />
-          ) : (
-            <div className="space-y-0.5">
-              <div className="text-xl sm:text-2xl font-black text-foreground">
-                {kpis?.pendingOrders || 0}
-              </div>
-              <p className="text-[10px] text-muted-foreground font-medium">Awaiting receipt / QA</p>
-            </div>
-          )}
-        </div>
-
-        {/* KPI 5: Active Vendors */}
+        {/* KPI 6: Active Vendors */}
         <div className="p-4 rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm space-y-1">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-wider">Active Suppliers</span>
@@ -363,24 +409,6 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
             </div>
           )}
         </div>
-
-        {/* KPI 6: Average PO Value */}
-        <div className="p-4 rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm space-y-1">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Avg PO Value</span>
-            <Calendar className="h-4 w-4 text-amber-500" />
-          </div>
-          {loading ? (
-            <Skeleton className="h-7 w-16" />
-          ) : (
-            <div className="space-y-0.5">
-              <div className="text-xl sm:text-2xl font-black text-foreground">
-                ₱{((kpis?.averageOrderValue || 0) / 1000).toFixed(0)}K
-              </div>
-              <p className="text-[10px] text-muted-foreground font-medium">Mean batch size</p>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Charts Section: Monthly Trend & Supplier Distribution */}
@@ -392,10 +420,10 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
               <div>
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-amber-500" />
-                  <span>Monthly Spend Trend & PO Volume</span>
+                  <span>Monthly Procurement Spend & Inbound Receipts</span>
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Historical monthly spend progression (₱ Thousands) and inbound order count
+                  Progression of Total PO spend vs Received Value (₱ Thousands) and inbound order volume
                 </CardDescription>
               </div>
               <Badge variant="outline" className="text-[10px]">
@@ -490,9 +518,9 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
               <div>
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
                   <PieIcon className="h-4 w-4 text-violet-500" />
-                  <span>Spend by Top Supplier</span>
+                  <span>Received Value by Supplier</span>
                 </CardTitle>
-                <CardDescription className="text-xs">Budget allocation concentration</CardDescription>
+                <CardDescription className="text-xs">Top supplier share of fulfilled spend</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -522,7 +550,7 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
                     }}
                     formatter={(val: number | string) => [
                       `₱${Number(val).toLocaleString()}`,
-                      "Spend",
+                      "Received",
                     ]}
                   />
                 </PieChart>
@@ -541,7 +569,7 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
                       {item.name}
                     </span>
                   </div>
-                  <span className="font-semibold text-foreground text-[11px]">
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-[11px]">
                     ₱{(item.value / 1000).toFixed(0)}k
                   </span>
                 </div>
@@ -551,7 +579,7 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
         </Card>
       </div>
 
-      {/* Ledger Table Section */}
+      {/* Ledger Table Section with Ordered (₱) and Received (₱) */}
       <Card className="border border-border/40 bg-card/60 backdrop-blur-sm shadow-sm">
         <CardHeader className="pb-3 border-b border-border/40">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -561,7 +589,7 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
                 <span>Purchase Orders Master Ledger</span>
               </CardTitle>
               <CardDescription className="text-xs">
-                Showing {filteredOrders.length} of {orders.length} purchase orders
+                Comparing total ordered amounts against actual received stock values for {filteredOrders.length} orders
               </CardDescription>
             </div>
 
@@ -649,7 +677,16 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
                     className="py-3 px-4 font-bold text-muted-foreground text-right cursor-pointer hover:text-foreground transition-colors"
                   >
                     <div className="flex items-center justify-end gap-1.5">
-                      <span>Total Amount (₱)</span>
+                      <span>Ordered (₱)</span>
+                      <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => toggleSort("receivedAmount")}
+                    className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400 text-right cursor-pointer hover:text-foreground transition-colors"
+                  >
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span>Received Amount (₱)</span>
                       <ArrowUpDown className="h-3 w-3" />
                     </div>
                   </th>
@@ -673,14 +710,17 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
                       <td className="py-3 px-4 text-muted-foreground text-[11px] whitespace-nowrap">
                         {order.date}
                       </td>
-                      <td className="py-3 px-4 font-medium text-foreground max-w-[220px] truncate" title={order.supplierName}>
+                      <td className="py-3 px-4 font-medium text-foreground max-w-[200px] truncate" title={order.supplierName}>
                         <div className="flex items-center gap-1.5">
                           <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
                           <span className="truncate">{order.supplierName}</span>
                         </div>
                       </td>
-                      <td className="py-3 px-4 font-bold text-foreground text-right">
+                      <td className="py-3 px-4 font-medium text-muted-foreground text-right">
                         ₱{order.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-3 px-4 font-black text-emerald-600 dark:text-emerald-400 text-right">
+                        ₱{order.receivedAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <Badge variant="outline" className={`text-[10px] font-bold ${badgeStyle}`}>
@@ -697,7 +737,7 @@ export function PurchasesModule({ groupId, startDate, endDate }: ModuleProps) {
                 })}
                 {filteredOrders.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-muted-foreground text-xs">
+                    <td colSpan={7} className="py-12 text-center text-muted-foreground text-xs">
                       No purchase orders found matching the filter criteria.
                     </td>
                   </tr>

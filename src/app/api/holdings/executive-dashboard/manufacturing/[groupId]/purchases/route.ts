@@ -139,20 +139,24 @@ export async function GET(
 
     let poRecords: AnyRec[] = [];
     let supplierRecords: AnyRec[] = [];
+    let receivingRecords: AnyRec[] = [];
 
     for (const host of hostVariants) {
       try {
         const poUrl = `${host}/items/purchase_order?sort=-purchase_order_id&limit=300&fields=purchase_order_id,purchase_order_no,date,date_encoded,date_received,supplier_name,gross_amount,discounted_amount,vat_amount,total_amount,inventory_status,payment_status,branch_id,is_posted,price_type`;
         const suppUrl = `${host}/items/suppliers?limit=400&fields=id,supplier_name,supplier_shortcut,supplier_type,payment_terms,city`;
+        const recUrl = `${host}/items/purchase_order_receiving?sort=-purchase_order_product_id&limit=800&fields=purchase_order_id,total_amount,received_quantity,unit_price,received_date`;
 
-        const [poRes, suppRes] = await Promise.all([
+        const [poRes, suppRes, recRes] = await Promise.all([
           fetchDirectusWithTimeout<AnyRec>(poUrl, headers, 4000),
           fetchDirectusWithTimeout<AnyRec>(suppUrl, headers, 4000),
+          fetchDirectusWithTimeout<AnyRec>(recUrl, headers, 4000),
         ]);
 
         if (poRes.ok && poRes.data.length > 0) {
           poRecords = poRes.data;
           supplierRecords = suppRes.data;
+          receivingRecords = recRes.data;
           break;
         }
       } catch {
@@ -177,6 +181,16 @@ export async function GET(
       return NextResponse.json(responseData);
     }
 
+    // Build receiving map (purchase_order_id -> sum of total_amount)
+    const receivingMap = new Map<number, number>();
+    receivingRecords.forEach((r) => {
+      const pId = Number(r.purchase_order_id);
+      const amt = parseFloat(String(r.total_amount || "0")) || 0;
+      if (pId && !isNaN(amt)) {
+        receivingMap.set(pId, (receivingMap.get(pId) || 0) + amt);
+      }
+    });
+
     // Build suppliers map
     const supplierMap = new Map<number, { name: string; type?: string }>();
     supplierRecords.forEach((s) => {
@@ -198,6 +212,7 @@ export async function GET(
         type?: string;
         count: number;
         spend: number;
+        receivedSpend: number;
         received: number;
         pending: number;
       }
@@ -239,6 +254,14 @@ export async function GET(
         key: "UNKNOWN" as PurchasePaymentStatus,
       };
 
+      // Calculate received amount
+      let receivedAmt = receivingMap.get(id) || 0;
+      if (receivedAmt === 0 && invStatusObj.key === "RECEIVED") {
+        receivedAmt = total;
+      } else if (invStatusObj.key === "PARTIALLY_RECEIVED" && receivedAmt === 0) {
+        receivedAmt = Math.round(total * 0.5 * 100) / 100;
+      }
+
       const record: PurchaseOrderRecord = {
         id,
         poNo,
@@ -250,6 +273,7 @@ export async function GET(
         supplierType: suppInfo.type,
         grossAmount: gross,
         totalAmount: total,
+        receivedAmount: receivedAmt,
         discountAmount: discount,
         vatAmount: vat,
         inventoryStatusId: invStatusNum,
@@ -264,7 +288,7 @@ export async function GET(
 
       parsedOrders.push(record);
 
-      // Aggregate supplier spend
+      // Aggregate supplier spend & received
       if (rawSupplier) {
         if (!supplierSpendMap.has(rawSupplier)) {
           supplierSpendMap.set(rawSupplier, {
@@ -272,6 +296,7 @@ export async function GET(
             type: suppInfo.type,
             count: 0,
             spend: 0,
+            receivedSpend: 0,
             received: 0,
             pending: 0,
           });
@@ -279,6 +304,7 @@ export async function GET(
         const sEntry = supplierSpendMap.get(rawSupplier)!;
         sEntry.count++;
         sEntry.spend += total;
+        sEntry.receivedSpend += receivedAmt;
         if (invStatusObj.key === "RECEIVED" || invStatusObj.key === "PARTIALLY_RECEIVED") {
           sEntry.received++;
         } else {
@@ -300,9 +326,7 @@ export async function GET(
         const mEntry = monthlyMap.get(label)!;
         mEntry.spend += total;
         mEntry.count++;
-        if (invStatusObj.key === "RECEIVED" || invStatusObj.key === "PARTIALLY_RECEIVED") {
-          mEntry.receivedSpend += total;
-        }
+        mEntry.receivedSpend += receivedAmt;
       }
     });
 
@@ -313,7 +337,8 @@ export async function GET(
         supplierName: s.name,
         supplierType: s.type,
         orderCount: s.count,
-        totalSpend: s.spend,
+        totalSpend: Math.round(s.spend * 100) / 100,
+        receivedSpend: Math.round(s.receivedSpend * 100) / 100,
         receivedCount: s.received,
         pendingCount: s.pending,
         fulfillmentRate: s.count > 0 ? Math.round(((s.received) / s.count) * 1000) / 10 : 0,
@@ -343,6 +368,9 @@ export async function GET(
 
     // Overall KPIs
     const totalSpend = parsedOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+    const totalAmountReceived = parsedOrders.reduce((sum, o) => sum + o.receivedAmount, 0);
+    const pendingAmount = Math.max(0, totalSpend - totalAmountReceived);
+
     const totalOrders = parsedOrders.length;
     const receivedOrders = parsedOrders.filter((o) => o.inventoryStatusKey === "RECEIVED").length;
     const partiallyReceivedOrders = parsedOrders.filter(
@@ -360,7 +388,9 @@ export async function GET(
     ).length;
 
     const fulfillmentRate =
-      totalOrders > 0
+      totalSpend > 0
+        ? Math.round((totalAmountReceived / totalSpend) * 1000) / 10
+        : totalOrders > 0
         ? Math.round(((receivedOrders + partiallyReceivedOrders) / totalOrders) * 1000) / 10
         : 0;
 
@@ -370,6 +400,8 @@ export async function GET(
 
     const kpis: PurchaseOrderKpis = {
       totalSpend: Math.round(totalSpend * 100) / 100,
+      totalAmountReceived: Math.round(totalAmountReceived * 100) / 100,
+      pendingAmount: Math.round(pendingAmount * 100) / 100,
       totalOrders,
       fulfillmentRate,
       receivedOrders,
@@ -404,4 +436,3 @@ export async function GET(
     return NextResponse.json(FALLBACK_PURCHASES_DATA);
   }
 }
-

@@ -88,8 +88,7 @@ const getCompanyLogoUrl = (logo?: string | null) => {
   ) {
     return trimmed;
   }
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-  return `${baseUrl}/assets/${trimmed}`;
+  return `/api/assets/${trimmed}`;
 };
 
 export const PermitDetailDialog: React.FC<PermitDetailDialogProps> = ({

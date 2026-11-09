@@ -37,7 +37,7 @@ const normalizeTypeName = (str?: string | null): string => {
 export const fetchDashboardData = async (): Promise<PermitDashboardData> => {
   // Only query active compliance requirement permit types matching Permit Creation
   const typesEndpoint = `${API_BASE_URL}/items/permit_types?filter[is_active][_neq]=0&limit=-1&sort=name`;
-  const companiesEndpoint = `${API_BASE_URL}/items/company_list?limit=-1&sort=company_name`;
+  const companiesEndpoint = `${API_BASE_URL}/items/company_list?limit=-1&sort[]=-is_mother_company&sort[]=company_name`;
 
   const [typesRes, companiesRes] = await Promise.allSettled([
     fetch(typesEndpoint, { method: "GET", headers: getHeaders(), cache: "no-store" }),
@@ -368,6 +368,7 @@ export const fetchDashboardData = async (): Promise<PermitDashboardData> => {
       company_logo: (c.company_logo as string) || null,
       company_address: (c.company_address as string) || null,
       company_tin: (c.company_tin as string) || null,
+      is_mother_company: Number(c.is_mother_company || 0),
       directus: rawDirectus,
       is_directus_configured: isConfigured,
       connection_status: connectionStatus,
@@ -383,14 +384,21 @@ export const fetchDashboardData = async (): Promise<PermitDashboardData> => {
     };
   });
 
-  // Sort companies: critical first, then warning, then healthy, then unmonitored last
+  // Sort companies: mother company always first, then critical, warning, healthy, unmonitored last
   const healthWeight: Record<HealthLevel, number> = {
     critical: 0,
     warning: 1,
     healthy: 2,
     unmonitored: 3,
   };
-  companiesHealth.sort((a, b) => healthWeight[a.health_level] - healthWeight[b.health_level]);
+  companiesHealth.sort((a, b) => {
+    const aMother = Number(a.is_mother_company || 0);
+    const bMother = Number(b.is_mother_company || 0);
+    if (aMother !== bMother) return bMother - aMother;
+    const diff = healthWeight[a.health_level] - healthWeight[b.health_level];
+    if (diff !== 0) return diff;
+    return a.company_name.localeCompare(b.company_name);
+  });
 
   // Urgent expiries: Expired and within 90 days (3 months), sorted by urgency
   const urgentExpiries = activeMonitoredPermits

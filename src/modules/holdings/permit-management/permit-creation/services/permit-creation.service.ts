@@ -41,7 +41,7 @@ const getCompanyHeaders = (token?: string | null): HeadersInit => {
  * Includes their individual directus URLs, directus tokens, and configuration status.
  */
 export const fetchCompanyList = async (): Promise<PermitCompany[]> => {
-  const companiesEndpoint = `${normalizeUrl(API_BASE_URL)}/items/company_list?limit=-1&sort=company_name`;
+  const companiesEndpoint = `${normalizeUrl(API_BASE_URL)}/items/company_list?limit=-1&sort[]=-is_mother_company&sort[]=company_name`;
   const res = await fetch(companiesEndpoint, {
     method: "GET",
     headers: getMasterHeaders(),
@@ -55,7 +55,7 @@ export const fetchCompanyList = async (): Promise<PermitCompany[]> => {
   const json = await res.json();
   const rawList = json.data || [];
 
-  return rawList.map((c: Record<string, unknown>) => {
+  const mapped: PermitCompany[] = rawList.map((c: Record<string, unknown>) => {
     const rawDirectus = (c.directus as string) || null;
     const rawToken = (c.directus_token as string) || null;
     const isConfigured = Boolean(rawDirectus && rawDirectus.trim() && rawToken && rawToken.trim());
@@ -67,11 +67,19 @@ export const fetchCompanyList = async (): Promise<PermitCompany[]> => {
       company_logo: (c.company_logo as string) || null,
       company_address: (c.company_address as string) || null,
       company_tin: (c.company_tin as string) || null,
+      is_mother_company: Number(c.is_mother_company || 0),
       directus: rawDirectus ? normalizeUrl(rawDirectus) : null,
       directus_token: rawToken,
       is_directus_configured: isConfigured,
       connection_status: isConfigured ? "online" : "unconfigured",
     };
+  });
+
+  return mapped.sort((a, b) => {
+    const aMother = Number(a.is_mother_company || 0);
+    const bMother = Number(b.is_mother_company || 0);
+    if (aMother !== bMother) return bMother - aMother;
+    return a.company_name.localeCompare(b.company_name);
   });
 };
 
@@ -85,7 +93,7 @@ export const fetchCompanyList = async (): Promise<PermitCompany[]> => {
 export const fetchMatrixData = async (): Promise<PermitCreationMatrixData> => {
   const masterBase = normalizeUrl(API_BASE_URL);
   const typesEndpoint = `${masterBase}/items/permit_types?limit=-1&sort=name`;
-  const companiesEndpoint = `${masterBase}/items/company_list?limit=-1&sort=company_name`;
+  const companiesEndpoint = `${masterBase}/items/company_list?limit=-1&sort[]=-is_mother_company&sort[]=company_name`;
 
   const [typesRes, companiesRes] = await Promise.allSettled([
     fetch(typesEndpoint, { method: "GET", headers: getMasterHeaders(), cache: "no-store" }),
@@ -114,11 +122,19 @@ export const fetchMatrixData = async (): Promise<PermitCreationMatrixData> => {
         company_logo: (c.company_logo as string) || null,
         company_address: (c.company_address as string) || null,
         company_tin: (c.company_tin as string) || null,
+        is_mother_company: Number(c.is_mother_company || 0),
         directus: rawDirectus ? normalizeUrl(rawDirectus) : null,
         directus_token: rawToken,
         is_directus_configured: isConfigured,
         connection_status: isConfigured ? ("online" as const) : ("unconfigured" as const),
       };
+    });
+
+    rawCompanies.sort((a, b) => {
+      const aMother = Number(a.is_mother_company || 0);
+      const bMother = Number(b.is_mother_company || 0);
+      if (aMother !== bMother) return bMother - aMother;
+      return a.company_name.localeCompare(b.company_name);
     });
   }
 

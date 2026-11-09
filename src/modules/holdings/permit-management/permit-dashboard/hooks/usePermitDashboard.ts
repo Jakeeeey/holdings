@@ -59,20 +59,36 @@ export const usePermitDashboard = () => {
   }, [fetchData]);
 
   const filteredCompanies = useMemo(() => {
-    return companiesHealth.filter((c) => {
-      // Health filter
-      if (healthFilter !== "all" && c.health_level !== (healthFilter as HealthLevel)) {
-        return false;
-      }
-      // Search filter
-      if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
-        const matchesName = c.company_name.toLowerCase().includes(term);
-        const matchesCode = c.company_code.toLowerCase().includes(term);
-        return matchesName || matchesCode;
-      }
-      return true;
-    });
+    const healthWeight: Record<HealthLevel, number> = {
+      critical: 0,
+      warning: 1,
+      healthy: 2,
+      unmonitored: 3,
+    };
+
+    return companiesHealth
+      .filter((c) => {
+        // Health filter
+        if (healthFilter !== "all" && c.health_level !== (healthFilter as HealthLevel)) {
+          return false;
+        }
+        // Search filter
+        if (searchTerm.trim()) {
+          const term = searchTerm.toLowerCase();
+          const matchesName = c.company_name.toLowerCase().includes(term);
+          const matchesCode = c.company_code.toLowerCase().includes(term);
+          return matchesName || matchesCode;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const aMother = Number(a.is_mother_company || 0);
+        const bMother = Number(b.is_mother_company || 0);
+        if (aMother !== bMother) return bMother - aMother;
+        const diff = healthWeight[a.health_level] - healthWeight[b.health_level];
+        if (diff !== 0) return diff;
+        return a.company_name.localeCompare(b.company_name);
+      });
   }, [companiesHealth, healthFilter, searchTerm]);
 
   const filteredArchivedPermits = useMemo(() => {

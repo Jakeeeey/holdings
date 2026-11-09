@@ -94,15 +94,23 @@ export const usePermitCreation = () => {
     return map;
   }, [permits]);
 
-  // Filtered companies based on search
+  // Filtered companies based on search (maintaining mother company first)
   const filteredCompanies = useMemo(() => {
-    if (!searchTerm.trim()) return companies;
-    const term = searchTerm.toLowerCase();
-    return companies.filter(
-      (c) =>
-        c.company_name.toLowerCase().includes(term) ||
-        c.company_code.toLowerCase().includes(term)
-    );
+    let list = companies;
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      list = companies.filter(
+        (c) =>
+          c.company_name.toLowerCase().includes(term) ||
+          c.company_code.toLowerCase().includes(term)
+      );
+    }
+    return [...list].sort((a, b) => {
+      const aMother = Number(a.is_mother_company || 0);
+      const bMother = Number(b.is_mother_company || 0);
+      if (aMother !== bMother) return bMother - aMother;
+      return a.company_name.localeCompare(b.company_name);
+    });
   }, [companies, searchTerm]);
 
   // Filtered permit types based on multi-select checkboxes and active status

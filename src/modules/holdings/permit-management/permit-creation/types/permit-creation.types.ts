@@ -5,6 +5,7 @@ export interface PermitCompany {
   company_logo?: string | null;
   company_address?: string | null;
   company_tin?: string | null;
+  is_mother_company?: number | boolean;
   directus?: string | null;
   directus_token?: string | null;
   is_directus_configured?: boolean;

@@ -59,6 +59,7 @@ import { ManufacturingCostPreviewCard } from "./manufacturing/ManufacturingCostP
 import { MachineDowntimePreviewCard } from "./manufacturing/MachineDowntimePreviewCard";
 import { QualityRejectRatePreviewCard } from "./manufacturing/QualityRejectRatePreviewCard";
 import { PurchasesPreviewCard } from "./manufacturing/PurchasesPreviewCard";
+import { InventoryPreviewCard } from "./manufacturing/InventoryPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -646,6 +647,24 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <PurchasesPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "inventory" ||
+                                        cat === "distribution-inventory" ||
+                                        cat === "warehouse-inventory" ||
+                                        cat === "running-inventory" ||
+                                        cat === "stock-inventory" ||
+                                        cat === "distribution_inventory" ||
+                                        cat === "warehouse_inventory"
+                                    ) {
+                                        return (
+                                            <InventoryPreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}

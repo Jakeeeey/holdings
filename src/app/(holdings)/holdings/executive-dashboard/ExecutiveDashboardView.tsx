@@ -58,6 +58,10 @@ import { FinishedGoodsInventoryPreviewCard } from "./manufacturing/FinishedGoods
 import { ManufacturingCostPreviewCard } from "./manufacturing/ManufacturingCostPreviewCard";
 import { MachineDowntimePreviewCard } from "./manufacturing/MachineDowntimePreviewCard";
 import { QualityRejectRatePreviewCard } from "./manufacturing/QualityRejectRatePreviewCard";
+import { PurchasesPreviewCard } from "./manufacturing/PurchasesPreviewCard";
+import { InventoryPreviewCard } from "./manufacturing/InventoryPreviewCard";
+import { InventoryAgingPreviewCard } from "./manufacturing/InventoryAgingPreviewCard";
+import { GrossMarginPreviewCard } from "./manufacturing/GrossMarginPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -623,6 +627,82 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <QualityRejectRatePreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "purchases" ||
+                                        cat === "purchase" ||
+                                        cat === "purchasing" ||
+                                        cat === "procurement" ||
+                                        cat === "purchase-orders" ||
+                                        cat === "purchase_orders" ||
+                                        cat === "po-summary" ||
+                                        cat === "po_summary" ||
+                                        cat === "purchases-summary" ||
+                                        cat === "purchases_summary" ||
+                                        cat === "raw-material-purchases"
+                                    ) {
+                                        return (
+                                            <PurchasesPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "inventory" ||
+                                        cat === "distribution-inventory" ||
+                                        cat === "warehouse-inventory" ||
+                                        cat === "running-inventory" ||
+                                        cat === "stock-inventory" ||
+                                        cat === "distribution_inventory" ||
+                                        cat === "warehouse_inventory"
+                                    ) {
+                                        return (
+                                            <InventoryPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "inventory-aging" ||
+                                        cat === "inventory_aging" ||
+                                        cat === "stock-aging" ||
+                                        cat === "aging-inventory" ||
+                                        cat === "aging_inventory" ||
+                                        cat === "distribution-aging" ||
+                                        cat === "aging-and-slob-inventory"
+                                    ) {
+                                        return (
+                                            <InventoryAgingPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "gross-margin" ||
+                                        cat === "gross_margin" ||
+                                        cat === "gross-profit" ||
+                                        cat === "profit-margin" ||
+                                        cat === "sales-margin" ||
+                                        cat === "margin" ||
+                                        cat === "commercial-margin"
+                                    ) {
+                                        return (
+                                            <GrossMarginPreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}

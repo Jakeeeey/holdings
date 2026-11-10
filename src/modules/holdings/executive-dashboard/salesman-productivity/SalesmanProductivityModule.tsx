@@ -210,13 +210,22 @@ export function SalesmanProductivityModule({ groupId }: ModuleProps) {
   };
 
   const topLeaderboardData = useMemo(() => {
-    return salesmen.slice(0, 8).map((s) => ({
-      name: s.name.length > 14 ? `${s.name.slice(0, 14)}...` : s.name,
-      fullName: s.name,
-      revenue: s.totalRevenue,
-      dropSize: s.averageDropSize,
-      quota: s.quotaAchievementRate,
-    }));
+    const nameCounts: Record<string, number> = {};
+    salesmen.forEach((s) => {
+      nameCounts[s.name] = (nameCounts[s.name] || 0) + 1;
+    });
+
+    return salesmen.slice(0, 8).map((s) => {
+      const isDuplicateName = (nameCounts[s.name] || 0) > 1;
+      const displayLabel = isDuplicateName ? `${s.name} (${s.code})` : s.name;
+      return {
+        name: displayLabel.length > 18 ? `${displayLabel.slice(0, 18)}...` : displayLabel,
+        fullName: isDuplicateName ? `${s.name} (${s.code})` : s.name,
+        revenue: s.totalRevenue,
+        dropSize: s.averageDropSize,
+        quota: s.quotaAchievementRate,
+      };
+    });
   }, [salesmen]);
 
   return (
@@ -789,3 +798,4 @@ export function SalesmanProductivityModule({ groupId }: ModuleProps) {
     </div>
   );
 }
+

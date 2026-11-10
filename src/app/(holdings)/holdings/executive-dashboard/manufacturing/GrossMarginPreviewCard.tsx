@@ -105,7 +105,7 @@ export function GrossMarginPreviewCard({ group, startDate, endDate }: GrossMargi
   }, [products, statusFilter]);
 
   return (
-    <Card className="overflow-hidden border border-border/60 bg-gradient-to-b from-card to-card/70 shadow-sm transition-all hover:shadow-md">
+    <Card className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-3 w-full overflow-hidden border border-border/60 bg-gradient-to-b from-card to-card/70 shadow-sm transition-all hover:shadow-md">
       <CardContent className="p-4 sm:p-5 space-y-4">
         {/* TOP BAR / CARD HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40 pb-3">

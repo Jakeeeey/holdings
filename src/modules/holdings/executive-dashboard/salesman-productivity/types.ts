@@ -66,3 +66,4 @@ export interface SalesmanProductivityResponse {
   source: "live_engine" | "fallback_mock";
   timestamp: string;
 }
+

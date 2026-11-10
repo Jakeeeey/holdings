@@ -466,3 +466,4 @@ export async function GET(
     return NextResponse.json(FALLBACK_SALESMAN_PRODUCTIVITY_DATA, { status: 200 });
   }
 }
+

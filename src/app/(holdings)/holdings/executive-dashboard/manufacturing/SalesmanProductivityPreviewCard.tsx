@@ -107,18 +107,27 @@ export function SalesmanProductivityPreviewCard({
   }, [salesmen, tierFilter]);
 
   const topChartData = useMemo(() => {
-    return salesmen.slice(0, 6).map((s) => ({
-      name: s.name.length > 13 ? `${s.name.slice(0, 13)}...` : s.name,
-      fullName: s.name,
-      revenue: s.totalRevenue,
-      quota: s.quotaAchievementRate,
-      dropSize: s.averageDropSize,
-      tier: s.tier,
-    }));
-  }, [salesmen]);
+    const nameCounts: Record<string, number> = {};
+    salesmen.forEach((s) => {
+      nameCounts[s.name] = (nameCounts[s.name] || 0) + 1;
+    });
+
+    return filteredSalesmen.slice(0, 6).map((s) => {
+      const isDuplicateName = (nameCounts[s.name] || 0) > 1;
+      const displayLabel = isDuplicateName ? `${s.name} (${s.code})` : s.name;
+      return {
+        name: displayLabel.length > 20 ? `${displayLabel.slice(0, 20)}...` : displayLabel,
+        fullName: isDuplicateName ? `${s.name} (${s.code})` : s.name,
+        revenue: s.totalRevenue,
+        quota: s.quotaAchievementRate,
+        dropSize: s.averageDropSize,
+        tier: s.tier,
+      };
+    });
+  }, [filteredSalesmen, salesmen]);
 
   return (
-    <Card className="overflow-hidden border border-border/60 bg-gradient-to-b from-card to-card/70 shadow-sm transition-all hover:shadow-md">
+    <Card className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-3 w-full overflow-hidden border border-border/60 bg-gradient-to-b from-card to-card/70 shadow-sm transition-all hover:shadow-md">
       <CardContent className="p-4 sm:p-5 space-y-4">
         {/* TOP BAR / CARD HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40 pb-3">
@@ -334,7 +343,7 @@ export function SalesmanProductivityPreviewCard({
                     <ComposedChart
                       data={topChartData}
                       layout="vertical"
-                      margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                      margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" opacity={0.15} horizontal={false} />
                       <XAxis
@@ -350,7 +359,7 @@ export function SalesmanProductivityPreviewCard({
                         stroke="currentColor"
                         opacity={0.8}
                         tick={{ fontSize: 11, fontWeight: "bold" }}
-                        width={90}
+                        width={140}
                       />
                       <Tooltip
                         contentStyle={{
@@ -521,3 +530,4 @@ export function SalesmanProductivityPreviewCard({
     </Card>
   );
 }
+

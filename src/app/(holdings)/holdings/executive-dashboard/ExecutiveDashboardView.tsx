@@ -62,6 +62,7 @@ import { PurchasesPreviewCard } from "./manufacturing/PurchasesPreviewCard";
 import { InventoryPreviewCard } from "./manufacturing/InventoryPreviewCard";
 import { InventoryAgingPreviewCard } from "./manufacturing/InventoryAgingPreviewCard";
 import { GrossMarginPreviewCard } from "./manufacturing/GrossMarginPreviewCard";
+import { SalesmanProductivityPreviewCard } from "./manufacturing/SalesmanProductivityPreviewCard";
 
 export interface DashboardGroup {
     id: number;
@@ -703,6 +704,24 @@ export function ExecutiveDashboardView({ initialGroups }: { initialGroups: Dashb
                                     ) {
                                         return (
                                             <GrossMarginPreviewCard
+                                                key={group.id}
+                                                group={group}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                            />
+                                        );
+                                    }
+                                    if (
+                                        cat === "salesman-productivity" ||
+                                        cat === "salesman_productivity" ||
+                                        cat === "sales-productivity" ||
+                                        cat === "sales-rep-productivity" ||
+                                        cat === "salesman" ||
+                                        cat === "salesmen-productivity" ||
+                                        cat === "salesman-performance"
+                                    ) {
+                                        return (
+                                            <SalesmanProductivityPreviewCard
                                                 key={group.id}
                                                 group={group}
                                                 startDate={startDate}
